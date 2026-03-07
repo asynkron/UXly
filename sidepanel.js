@@ -3,6 +3,15 @@
 
   let analysisResult = null;
 
+  function countComponents(units) {
+    let count = 0;
+    for (const u of units) {
+      count++;
+      if (u.children) count += countComponents(u.children);
+    }
+    return count;
+  }
+
   const btnAnalyze = document.getElementById("btn-analyze");
   const btnExport = document.getElementById("btn-export");
   const btnClear = document.getElementById("btn-clear");
@@ -45,7 +54,7 @@
       btnClear.disabled = false;
       const fc = result.summary.findingCounts || {};
       setStatus(
-        `${result.score}/100  \u2022  ${fc.error || 0}E ${fc.warn || 0}W ${fc.info || 0}I  \u2022  ${result.visualUnits.length} components`,
+        `${result.score}/100  \u2022  ${fc.error || 0}E ${fc.warn || 0}W ${fc.info || 0}I  \u2022  ${countComponents(result.visualUnits)} components`,
         result.score >= 80 ? "success" : ""
       );
     } catch (err) {
@@ -228,47 +237,58 @@
       return;
     }
 
-    let html = "";
+    // Build a flat lookup so click handlers can find any unit by path
+    const unitLookup = [];
 
+    function registerUnit(unit) {
+      const id = unitLookup.length;
+      unitLookup.push(unit);
+      return id;
+    }
+
+    function renderChildrenList(children, depth) {
+      let html = `<div class="component-children-list" style="margin-left:${depth * 12}px">`;
+      for (const c of children) {
+        const uid = registerUnit(c);
+        const hasKids = c.children && c.children.length > 0;
+        const own = c.ownMemberCount ?? c.memberCount;
+        html += `<div class="component-child" data-uid="${uid}">
+          <span class="child-type">${esc(c.type)}</span>
+          <span class="child-selector">${esc(c.selector)}</span>
+          <span class="child-details">${c.rect.width}\u00d7${c.rect.height} \u2022 ${own} own${hasKids ? ` \u2022 ${c.children.length} sub` : ""}</span>
+        </div>`;
+        if (hasKids) {
+          html += renderChildrenList(c.children, depth + 1);
+        }
+      }
+      html += `</div>`;
+      return html;
+    }
+
+    let html = "";
     for (let i = 0; i < data.visualUnits.length; i++) {
       const u = data.visualUnits[i];
+      const uid = registerUnit(u);
       const hasChildren = u.children && u.children.length > 0;
-      html += `<div class="component-item" data-index="${i}">
+      html += `<div class="component-item" data-uid="${uid}">
         <div class="component-type">${esc(u.type)}</div>
         <div class="component-selector">${esc(u.selector)}</div>
         <div class="component-details">${u.rect.width}\u00d7${u.rect.height}  \u2022  (${u.rect.left}, ${u.rect.top})</div>
-        <div class="component-children">${u.memberCount} element${u.memberCount > 1 ? "s" : ""}${hasChildren ? ` \u2022 ${u.children.length} sub-component${u.children.length > 1 ? "s" : ""}` : ""}</div>
+        <div class="component-children">${u.ownMemberCount ?? u.memberCount} own element${(u.ownMemberCount ?? u.memberCount) !== 1 ? "s" : ""} \u2022 ${u.memberCount} total${hasChildren ? ` \u2022 ${u.children.length} sub-component${u.children.length > 1 ? "s" : ""}` : ""}</div>
       </div>`;
 
       if (hasChildren) {
-        html += `<div class="component-children-list">`;
-        for (let ci = 0; ci < u.children.length; ci++) {
-          const c = u.children[ci];
-          html += `<div class="component-child" data-parent="${i}" data-child="${ci}">
-            <span class="child-type">${esc(c.type)}</span>
-            <span class="child-selector">${esc(c.selector)}</span>
-            <span class="child-details">${c.rect.width}\u00d7${c.rect.height}</span>
-          </div>`;
-        }
-        html += `</div>`;
+        html += renderChildrenList(u.children, 1);
       }
     }
 
     container.innerHTML = html;
 
-    container.querySelectorAll(".component-item").forEach((item) => {
-      item.addEventListener("click", () => {
-        const idx = parseInt(item.dataset.index, 10);
-        highlightComponent(data.visualUnits[idx]);
-      });
-    });
-
-    container.querySelectorAll(".component-child").forEach((item) => {
-      item.addEventListener("click", () => {
-        const pi = parseInt(item.dataset.parent, 10);
-        const ci = parseInt(item.dataset.child, 10);
-        const child = data.visualUnits[pi].children[ci];
-        highlightComponent(child);
+    container.querySelectorAll("[data-uid]").forEach((item) => {
+      item.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const uid = parseInt(item.dataset.uid, 10);
+        highlightComponent(unitLookup[uid]);
       });
     });
   }
@@ -282,8 +302,16 @@
 
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },
-        func: (rect, label) => {
+        func: (uxlyId, fallbackRect, label) => {
           document.querySelectorAll("[data-uxly-highlight]").forEach((el) => el.remove());
+
+          // Find element by unique data-uxly-id stamped during analysis
+          let rect = fallbackRect;
+          const el = uxlyId ? document.querySelector(`[data-uxly-id="${uxlyId}"]`) : null;
+          if (el) {
+            const live = el.getBoundingClientRect();
+            rect = { top: live.top, left: live.left, width: live.width, height: live.height };
+          }
 
           const overlay = document.createElement("div");
           overlay.setAttribute("data-uxly-highlight", "true");
@@ -319,7 +347,7 @@
 
           setTimeout(() => overlay.remove(), 3000);
         },
-        args: [unit.rect, unit.type],
+        args: [unit.uxlyId || "", unit.rect, unit.type],
       });
     } catch (_) {}
   }

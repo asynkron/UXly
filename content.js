@@ -23,14 +23,23 @@
     return true;
   }
 
+  let _uxlyIdCounter = 0;
   function getSelector(el) {
-    if (el.id) return "#" + CSS.escape(el.id);
-    let path = el.tagName.toLowerCase();
+    // Stamp element with a unique ID for reliable lookup
+    if (!el.hasAttribute("data-uxly-id")) {
+      el.setAttribute("data-uxly-id", String(++_uxlyIdCounter));
+    }
+    // Build a human-readable label (for display only)
+    let label = el.tagName.toLowerCase();
     if (el.className && typeof el.className === "string") {
       const cls = el.className.trim().split(/\s+/).slice(0, 2).map(c => "." + CSS.escape(c)).join("");
-      path += cls;
+      label += cls;
     }
-    return path;
+    return label;
+  }
+
+  function getUxlyId(el) {
+    return el.getAttribute("data-uxly-id") || "";
   }
 
   function roundRect(r) {
@@ -71,13 +80,81 @@
 
   // ─── Color Parsing & WCAG ─────────────────────────────────
 
+  // CIE Lab → sRGB conversion
+  function labToRgb(L, a, b) {
+    // Lab → XYZ (D65 white point)
+    const fy = (L + 16) / 116;
+    const fx = a / 500 + fy;
+    const fz = fy - b / 200;
+    const delta = 6 / 29;
+    const d3 = delta * delta * delta;
+    const xn = 0.95047, yn = 1.0, zn = 1.08883;
+    const X = xn * (fx > delta ? fx * fx * fx : 3 * delta * delta * (fx - 4 / 29));
+    const Y = yn * (fy > delta ? fy * fy * fy : 3 * delta * delta * (fy - 4 / 29));
+    const Z = zn * (fz > delta ? fz * fz * fz : 3 * delta * delta * (fz - 4 / 29));
+    // XYZ → linear sRGB
+    let rLin =  3.2404542 * X - 1.5371385 * Y - 0.4985314 * Z;
+    let gLin = -0.9692660 * X + 1.8760108 * Y + 0.0415560 * Z;
+    let bLin =  0.0556434 * X - 0.2040259 * Y + 1.0572252 * Z;
+    const gamma = (x) => x <= 0.0031308 ? 12.92 * x : 1.055 * Math.pow(x, 1 / 2.4) - 0.055;
+    return {
+      r: Math.round(Math.min(255, Math.max(0, gamma(rLin) * 255))),
+      g: Math.round(Math.min(255, Math.max(0, gamma(gLin) * 255))),
+      b: Math.round(Math.min(255, Math.max(0, gamma(bLin) * 255))),
+    };
+  }
+
+  // oklch → sRGB conversion (pure math, no DOM dependency)
+  function oklchToRgb(L, C, H) {
+    // oklch → oklab
+    const hRad = (H * Math.PI) / 180;
+    const a = C * Math.cos(hRad);
+    const b = C * Math.sin(hRad);
+    // oklab → linear RGB via LMS
+    const l_ = L + 0.3963377774 * a + 0.2158037573 * b;
+    const m_ = L - 0.1055613458 * a - 0.0638541728 * b;
+    const s_ = L - 0.0894841775 * a - 1.2914855480 * b;
+    const l = l_ * l_ * l_;
+    const m = m_ * m_ * m_;
+    const s = s_ * s_ * s_;
+    let rLin = +4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s;
+    let gLin = -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s;
+    let bLin = -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s;
+    // linear → sRGB gamma
+    const gamma = (x) => x <= 0.0031308 ? 12.92 * x : 1.055 * Math.pow(x, 1 / 2.4) - 0.055;
+    return {
+      r: Math.round(Math.min(255, Math.max(0, gamma(rLin) * 255))),
+      g: Math.round(Math.min(255, Math.max(0, gamma(gLin) * 255))),
+      b: Math.round(Math.min(255, Math.max(0, gamma(bLin) * 255))),
+    };
+  }
+
+  const _parseColorCache = new Map();
   function parseColor(str) {
     if (!str) return null;
     let m = str.match(/rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)/);
     if (m) return { r: parseFloat(m[1]), g: parseFloat(m[2]), b: parseFloat(m[3]) };
     m = str.match(/color\(srgb\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)/);
     if (m) return { r: parseFloat(m[1]) * 255, g: parseFloat(m[2]) * 255, b: parseFloat(m[3]) * 255 };
-    return null;
+    // oklch(L C H) or oklch(L C H / alpha)
+    m = str.match(/oklch\(\s*([\d.]+)\s+([\d.]+)\s+([\d.]+)/);
+    if (m) return oklchToRgb(parseFloat(m[1]), parseFloat(m[2]), parseFloat(m[3]));
+    // lab(L a b) or lab(L a b / alpha) — CIE Lab, L: 0-100
+    m = str.match(/lab\(\s*([\d.]+)\s+([-\d.]+)\s+([-\d.]+)/);
+    if (m) return labToRgb(parseFloat(m[1]), parseFloat(m[2]), parseFloat(m[3]));
+    // Fallback: resolve via canvas for hsl, hwb, lab, lch, etc.
+    if (_parseColorCache.has(str)) return _parseColorCache.get(str);
+    try {
+      const ctx = document.createElement("canvas").getContext("2d");
+      ctx.fillStyle = str;
+      const hex = ctx.fillStyle;
+      m = hex.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+      const result = m ? { r: parseInt(m[1], 16), g: parseInt(m[2], 16), b: parseInt(m[3], 16) } : null;
+      _parseColorCache.set(str, result);
+      return result;
+    } catch (e) {
+      return null;
+    }
   }
 
   function colorDistance(c1, c2) {
@@ -131,7 +208,7 @@
     // Walk up the tree collecting backgrounds, then composite from bottom up
     const layers = [];
     let current = el;
-    while (current && current !== document.documentElement) {
+    while (current) {
       const bg = getComputedStyle(current).backgroundColor;
       if (bg && !isTransparent(bg)) {
         const parsed = parseColor(bg);
@@ -404,109 +481,78 @@
     return false;
   }
 
+  function rectContains(outer, inner) {
+    return inner.left >= outer.left - 2 && inner.right <= outer.right + 2 &&
+           inner.top >= outer.top - 2 && inner.bottom <= outer.bottom + 2;
+  }
+
+  function rectArea(r) { return r.width * r.height; }
+
   function detectVisualUnits(elements) {
-    const candidates = elements.filter((item) => {
-      return hasContinuousBorder(item.el) ||
-             INTERACTIVE_TAGS.has(item.tag) ||
-             item.el.getAttribute("role");
-    });
-    if (candidates.length === 0) return [];
+    const LANDMARK_TAGS = new Set(["header", "footer", "nav", "aside", "main", "section", "article"]);
+    const LANDMARK_ROLES = new Set(["banner", "main", "contentinfo", "navigation", "complementary", "region", "dialog", "alertdialog", "toolbar", "menu", "menubar", "tablist", "tabpanel", "form"]);
 
-    const uf = new UnionFind(candidates.length);
+    // Step 1: Identify component boundaries — elements that define a visual unit
+    // Each becomes its own component (no union-find merging)
+    const allUnits = [];
 
-    for (let i = 0; i < candidates.length; i++) {
-      for (let j = i + 1; j < candidates.length; j++) {
-        const a = candidates[i], b = candidates[j];
-        if (!rectsOverlapOrAdjacent(a.rect, b.rect, EDGE_TOLERANCE)) continue;
-        if (isAncestor(a.el, b.el) || isAncestor(b.el, a.el)) {
-          uf.union(i, j);
-        } else if (a.el.parentElement === b.el.parentElement && hasContinuousBorder(a.el.parentElement)) {
-          uf.union(i, j);
+    for (const item of elements) {
+      const hasBorder = hasContinuousBorder(item.el);
+      const role = item.el.getAttribute("role");
+      const isLandmark = LANDMARK_TAGS.has(item.tag) || (role && LANDMARK_ROLES.has(role));
+      const hasBg = !isTransparent(item.styles.backgroundColor);
+
+      // A component boundary needs a visual or semantic boundary
+      const isComponent = isLandmark || (hasBorder && item.rect.width >= 40 && item.rect.height >= 30);
+      // Also include elements with background that contain other elements (cards, panels)
+      const isContainer = hasBg && !hasBorder && item.el.children.length >= 2 &&
+                          item.rect.width >= 60 && item.rect.height >= 40;
+
+      if (!isComponent && !isContainer) continue;
+
+      // Count elements inside this component
+      const members = elements.filter((m) => item.el === m.el || item.el.contains(m.el));
+
+      allUnits.push({
+        type: classifyComponent(members, item.rect),
+        rect: item.rect,
+        memberCount: members.length,
+        selector: item.selector,
+        uxlyId: getUxlyId(item.el),
+        members: members.slice(0, 20).map((m) => ({ tag: m.tag, selector: m.selector, rect: m.rect })),
+        outerElement: item.el,
+        children: [],
+        parent: null,
+      });
+    }
+
+    if (allUnits.length === 0) return [];
+
+    // Step 2: Build containment tree — sort by area ascending (smallest first)
+    allUnits.sort((a, b) => rectArea(a.rect) - rectArea(b.rect));
+
+    for (let i = 0; i < allUnits.length; i++) {
+      // Find the smallest larger unit that contains this one in the DOM
+      for (let j = i + 1; j < allUnits.length; j++) {
+        if (rectContains(allUnits[j].rect, allUnits[i].rect) &&
+            allUnits[j].outerElement.contains(allUnits[i].outerElement)) {
+          allUnits[i].parent = allUnits[j];
+          allUnits[j].children.push(allUnits[i]);
+          break; // First match is smallest (sorted by area)
         }
       }
     }
 
-    const groupMap = {};
-    for (let i = 0; i < candidates.length; i++) {
-      const root = uf.find(i);
-      if (!groupMap[root]) groupMap[root] = [];
-      groupMap[root].push(candidates[i]);
+    // Step 3: Compute own member counts (exclude members claimed by children)
+    for (const unit of allUnits) {
+      const childMemberTotal = unit.children.reduce((sum, c) => sum + c.memberCount, 0);
+      unit.ownMemberCount = Math.max(0, unit.memberCount - childMemberTotal);
     }
 
-    const units = [];
-    for (const members of Object.values(groupMap)) {
-      let groupRect = { ...members[0].rect };
-      for (let i = 1; i < members.length; i++) groupRect = mergeRects(groupRect, members[i].rect);
-
-      let outermost = members[0];
-      for (const m of members) {
-        if (m.rect.width * m.rect.height >= outermost.rect.width * outermost.rect.height) outermost = m;
-      }
-
-      units.push({
-        type: classifyComponent(members, groupRect),
-        rect: groupRect,
-        memberCount: members.length,
-        selector: outermost.selector,
-        members: members.map((m) => ({ tag: m.tag, selector: m.selector, rect: m.rect })),
-        outerElement: outermost.el,
-      });
-    }
-
-    const filtered = units
-      .filter((u) => u.rect.width > 5 && u.rect.height > 5)
+    // Step 4: Return only root-level units, sorted by position
+    return allUnits
+      .filter((u) => !u.parent)
       .sort((a, b) => a.rect.top - b.rect.top || a.rect.left - b.rect.left);
-
-    // Decompose large units into children
-    for (const unit of filtered) {
-      unit.children = decomposeUnit(unit, elements);
-    }
-
-    return filtered;
-  }
-
-  function decomposeUnit(unit, allElements) {
-    // Only decompose units with enough members to have meaningful sub-structure
-    if (unit.memberCount < 6) return [];
-    if (!unit.outerElement) return [];
-
-    // Find direct child containers of the outermost element
-    const outerEl = unit.outerElement;
-    const directChildren = Array.from(outerEl.children).filter((child) => {
-      if (IGNORED_TAGS.has(child.tagName)) return false;
-      if (!isVisible(child)) return false;
-      const r = child.getBoundingClientRect();
-      if (r.width < 20 || r.height < 20) return false;
-      return true;
-    });
-
-    if (directChildren.length < 2) return [];
-
-    const subUnits = [];
-
-    for (const child of directChildren) {
-      // Collect all analysis elements that are inside this child
-      const childMembers = allElements.filter((item) =>
-        child === item.el || child.contains(item.el)
-      );
-      if (childMembers.length === 0) continue;
-
-      const childRect = roundRect(child.getBoundingClientRect());
-      const type = classifyComponent(childMembers, childRect);
-
-      // Skip trivially small children
-      if (childRect.width < 30 || childRect.height < 20) continue;
-
-      subUnits.push({
-        type,
-        rect: childRect,
-        memberCount: childMembers.length,
-        selector: getSelector(child),
-        members: childMembers.slice(0, 20).map((m) => ({ tag: m.tag, selector: m.selector, rect: m.rect })),
-      });
-    }
-
-    return subUnits;
   }
 
   // ─── Component Classification ─────────────────────────────
@@ -825,7 +871,7 @@
             // (i.e., one is taller, centered within the other). Same-height elements
             // with matching top+bottom offsets are shifted, not centered.
             const isCentered = heightDiff > 1 && topDiff > 0 && bottomDiff > 0 && Math.abs(topDiff - bottomDiff) <= 1;
-            if (topDiff >= 1 && topDiff <= 3 && !isCentered) {
+            if (topDiff >= 2 && topDiff <= 3 && !isCentered) {
               issues.push({
                 parentSelector: getSelector(parent),
                 childA: a.selector, childB: b.selector,
@@ -842,7 +888,7 @@
             const widthDiff = Math.abs(a.rect.width - b.rect.width);
             // Only treat as "centered" if widths differ (one wider, centered within the other)
             const isCentered = widthDiff > 1 && leftDiff > 0 && rightDiff > 0 && Math.abs(leftDiff - rightDiff) <= 1;
-            if (leftDiff >= 1 && leftDiff <= 3 && !isCentered) {
+            if (leftDiff >= 2 && leftDiff <= 3 && !isCentered) {
               issues.push({
                 parentSelector: getSelector(parent),
                 childA: a.selector, childB: b.selector,
@@ -1112,7 +1158,13 @@
       if (el.tagName === "svg" && el.parentElement && el.parentElement.closest("svg")) continue;
       if (el.closest("[data-uxly-highlight]")) continue;
       const rect = el.getBoundingClientRect();
-      if (rect.width < 1 || rect.height < 1 || rect.width > 48 || rect.height > 48) continue;
+      if (rect.width < 1 || rect.height < 1 || rect.width > 32 || rect.height > 32) continue;
+      // Skip images that look like avatars (circular, square aspect ratio)
+      if (el.tagName === "IMG") {
+        const cs = getComputedStyle(el);
+        const br = parseFloat(cs.borderRadius);
+        if (br >= Math.min(rect.width, rect.height) / 2 - 1) continue;
+      }
 
       // Determine context region for grouping
       const landmark = el.closest("nav, header, footer, main, aside, section, [role=navigation], [role=banner], [role=contentinfo], table, [role=grid]");
@@ -1238,8 +1290,8 @@
       const hasBg = !isTransparent(s.backgroundColor);
       if (!hasBorder && !hasBg) continue;
 
-      // Must contain text
-      if (!item.el.textContent.trim()) continue;
+      // Must contain direct text (not just text in descendants)
+      if (!hasDirectText(item.el)) continue;
       // Skip tiny elements, inline tags, and form controls
       if (item.rect.width < 60 || item.rect.height < 20) continue;
       if (["span", "a", "button", "input", "select", "textarea", "label", "th", "td", "li", "table", "nav"].includes(item.tag)) continue;
@@ -1300,6 +1352,8 @@
       if (el.getAttribute("aria-label")) continue;
       if (el.getAttribute("aria-labelledby")) continue;
       if (el.getAttribute("title")) continue;
+      // Placeholder serves as a visible label for simple forms
+      if (el.getAttribute("placeholder")) continue;
 
       issues.push({
         selector: item.selector, tag: item.tag,
@@ -2589,25 +2643,29 @@
   // ─── Scoring ──────────────────────────────────────────────
 
   function computeScore(findings) {
-    // Group findings by category — diminishing penalty for repeat issues in same category
+    // Group findings by category — only errors and warns count against the score
+    // Info findings are observations, not problems
     const byCategory = {};
     for (const f of findings) {
+      if (f.severity === "info") continue; // info doesn't penalize
       if (!byCategory[f.category]) byCategory[f.category] = [];
       byCategory[f.category].push(f);
     }
 
     let deductions = 0;
-    const severityBase = { error: 10, warn: 4, info: 1 };
+    const severityBase = { error: 5, warn: 2 };
 
     for (const [category, items] of Object.entries(byCategory)) {
-      // First finding in a category gets full weight, subsequent get diminishing
+      // First finding in a category gets full weight, subsequent get heavy diminishing
+      // This means 5 issues in one category ≈ 2 issues in different categories
       for (let i = 0; i < items.length; i++) {
-        const base = severityBase[items[i].severity] || 1;
-        const diminish = 1 / (1 + i * 0.7); // 1st: 100%, 2nd: 59%, 3rd: 42%, etc.
+        const base = severityBase[items[i].severity] || 0;
+        const diminish = 1 / (1 + i); // 1st: 100%, 2nd: 50%, 3rd: 33%, 4th: 25%
         deductions += base * diminish;
       }
     }
 
+    // Cap deductions at 100 — score is 0-100
     return Math.max(0, Math.min(100, Math.round(100 - deductions)));
   }
 
@@ -2661,14 +2719,15 @@
     findings,
     consistency,
     analyses,
-    visualUnits: visualUnits.map((u) => ({
-      type: u.type, rect: u.rect, memberCount: u.memberCount,
-      selector: u.selector, members: u.members,
-      children: (u.children || []).map((c) => ({
-        type: c.type, rect: c.rect, memberCount: c.memberCount,
-        selector: c.selector,
-      })),
-    })),
+    visualUnits: visualUnits.map(function serializeUnit(u) {
+      return {
+        type: u.type, rect: u.rect,
+        memberCount: u.memberCount, ownMemberCount: u.ownMemberCount ?? u.memberCount,
+        selector: u.selector, uxlyId: u.uxlyId,
+        members: u.members,
+        children: (u.children || []).map(serializeUnit),
+      };
+    }),
     summary: {
       componentCounts: {},
       findingCounts: { error: 0, warn: 0, info: 0 },
