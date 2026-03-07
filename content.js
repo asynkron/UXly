@@ -779,6 +779,11 @@
         const vGap = Math.max(0, Math.max(a.rect.top - b.rect.bottom, b.rect.top - a.rect.bottom));
         const gap = Math.max(hGap, vGap);
         if (gap > 0 && gap < 8) {
+          // Skip vertically stacked links/items inside nav or sidebar — small vertical gaps are expected
+          const isVerticalGap = vGap > 0 && vGap >= hGap;
+          const inNav = a.el.closest("nav, aside, [role=navigation], [role=complementary]");
+          if (isVerticalGap && inNav) continue;
+
           tooCrowded.push({
             selectorA: a.selector, selectorB: b.selector, gap: Math.round(gap),
           });
@@ -815,8 +820,11 @@
           if (yOverlap >= minH * 0.5) {
             const topDiff = Math.abs(a.rect.top - b.rect.top);
             const bottomDiff = Math.abs(a.rect.bottom - b.rect.bottom);
-            // If top and bottom are off by similar amounts, element is vertically centered — not misaligned
-            const isCentered = topDiff > 0 && bottomDiff > 0 && Math.abs(topDiff - bottomDiff) <= 1;
+            const heightDiff = Math.abs(a.rect.height - b.rect.height);
+            // Only treat as "centered" if the elements are actually different heights
+            // (i.e., one is taller, centered within the other). Same-height elements
+            // with matching top+bottom offsets are shifted, not centered.
+            const isCentered = heightDiff > 1 && topDiff > 0 && bottomDiff > 0 && Math.abs(topDiff - bottomDiff) <= 1;
             if (topDiff >= 1 && topDiff <= 3 && !isCentered) {
               issues.push({
                 parentSelector: getSelector(parent),
@@ -831,8 +839,9 @@
           if (xOverlap >= minW * 0.5) {
             const leftDiff = Math.abs(a.rect.left - b.rect.left);
             const rightDiff = Math.abs(a.rect.right - b.rect.right);
-            // If left and right are off by similar amounts, element is horizontally centered
-            const isCentered = leftDiff > 0 && rightDiff > 0 && Math.abs(leftDiff - rightDiff) <= 1;
+            const widthDiff = Math.abs(a.rect.width - b.rect.width);
+            // Only treat as "centered" if widths differ (one wider, centered within the other)
+            const isCentered = widthDiff > 1 && leftDiff > 0 && rightDiff > 0 && Math.abs(leftDiff - rightDiff) <= 1;
             if (leftDiff >= 1 && leftDiff <= 3 && !isCentered) {
               issues.push({
                 parentSelector: getSelector(parent),
@@ -912,16 +921,50 @@
         const areConsecutive = indices.length >= 3 && indices.every((idx, i) => i === 0 || idx - indices[i - 1] <= 2);
         if (!areConsecutive) continue;
 
-        if (maxDev > 2 && med > 0) {
-          issues.push({
-            parentSelector: getSelector(parent),
-            gaps: gaps.map(Math.round),
-            meanGap: Math.round(med),
-            maxDeviation: Math.round(maxDev),
-            childCount: similar.length,
-            direction: isVertical ? "vertical" : "horizontal",
-          });
+        // Split into consecutive runs — a heading or divider between items means separate groups
+        const runs = [];
+        let currentRun = [sorted[0]];
+        for (let i = 1; i < sorted.length; i++) {
+          const idxA = allSiblings.indexOf(sorted[i - 1].el);
+          const idxB = allSiblings.indexOf(sorted[i].el);
+          if (idxB - idxA > 1) {
+            // Check if the sibling between them is a different tag (heading/divider)
+            const between = allSiblings.slice(idxA + 1, idxB);
+            const hasDivider = between.some(s => s.tagName.toLowerCase() !== tag);
+            if (hasDivider) {
+              runs.push(currentRun);
+              currentRun = [sorted[i]];
+              continue;
+            }
+          }
+          currentRun.push(sorted[i]);
         }
+        runs.push(currentRun);
+
+        // Analyze each run independently
+        for (const run of runs) {
+          if (run.length < 3) continue;
+          const runGaps = [];
+          for (let i = 0; i < run.length - 1; i++) {
+            const g = isVertical
+              ? run[i + 1].rect.top - run[i].rect.bottom
+              : run[i + 1].rect.left - run[i].rect.right;
+            runGaps.push(g);
+          }
+          const runMed = median(runGaps);
+          const runMaxDev = Math.max(...runGaps.map((g) => Math.abs(g - runMed)));
+          if (runMaxDev > 2 && runMed > 0) {
+            issues.push({
+              parentSelector: getSelector(parent),
+              gaps: runGaps.map(Math.round),
+              meanGap: Math.round(runMed),
+              maxDeviation: Math.round(runMaxDev),
+              childCount: run.length,
+              direction: isVertical ? "vertical" : "horizontal",
+            });
+          }
+        }
+        // (runs-based analysis above replaces the original single-group check)
       }
     }
     return issues;
@@ -1013,12 +1056,26 @@
       const a = landmarks[i], b = landmarks[i + 1];
       const gap = b.rect.top - a.rect.bottom;
       // Skip side-by-side landmarks (horizontally arranged, not stacked)
-      // If they overlap vertically significantly, they're side-by-side
       const yOverlap = Math.min(a.rect.bottom, b.rect.bottom) - Math.max(a.rect.top, b.rect.top);
       const minH = Math.min(a.rect.height, b.rect.height);
       if (minH > 0 && yOverlap > minH * 0.3) continue;
       // Skip negative gaps (overlapping) and absurdly large gaps (> 200px likely different layout zones)
       if (gap < 0 || gap > 200) continue;
+
+      // Skip structural layout siblings (e.g., nav + aside inside same flex/grid wrapper)
+      // These aren't "content sections" — their spacing is part of the app shell layout
+      if (a.el.parentElement === b.el.parentElement) {
+        const parentDisplay = getComputedStyle(a.el.parentElement).display;
+        if (parentDisplay === "flex" || parentDisplay === "grid" || parentDisplay === "inline-flex" || parentDisplay === "inline-grid") continue;
+      }
+      // Skip parent-child relationships (one landmark wraps another)
+      if (a.el.contains(b.el) || b.el.contains(a.el)) continue;
+      // Skip gaps involving app shell elements (header, nav, footer) in different containers —
+      // these are structural layout boundaries, not repeating content sections
+      const shellTags = new Set(["header", "nav", "footer"]);
+      const aIsShell = shellTags.has(a.el.tagName.toLowerCase()) || a.el.getAttribute("role") === "banner" || a.el.getAttribute("role") === "contentinfo" || a.el.getAttribute("role") === "navigation";
+      const bIsShell = shellTags.has(b.el.tagName.toLowerCase()) || b.el.getAttribute("role") === "banner" || b.el.getAttribute("role") === "contentinfo" || b.el.getAttribute("role") === "navigation";
+      if ((aIsShell || bIsShell) && a.el.parentElement !== b.el.parentElement) continue;
 
       gaps.push({
         sectionA: a.selector,
@@ -1039,14 +1096,21 @@
   // ─── Analysis: Icon Consistency ───────────────────────────
 
   function analyzeIconConsistency() {
-    const selectorStr = [
+    // Collect small SVG/img elements that look like icons
+    // Look in interactive elements and also flex containers with text siblings
+    const iconEls = document.querySelectorAll([
       "button svg", "a svg", "[role=button] svg",
       "button img", "a img", "[role=button] img",
-    ].join(", ");
-    const iconEls = document.querySelectorAll(selectorStr);
+      // Also standalone icons in flex rows (status messages, icon+text pairs)
+      ":is(div, span, li, p) > svg",
+      ":is(div, span, li, p) > img",
+    ].join(", "));
     const icons = [];
 
     for (const el of iconEls) {
+      // Skip SVGs nested inside other SVGs (chart sub-elements)
+      if (el.tagName === "svg" && el.parentElement && el.parentElement.closest("svg")) continue;
+      if (el.closest("[data-uxly-highlight]")) continue;
       const rect = el.getBoundingClientRect();
       if (rect.width < 1 || rect.height < 1 || rect.width > 48 || rect.height > 48) continue;
 
@@ -1096,14 +1160,26 @@
       }
     }
 
-    // Check icon-text vertical alignment
+    // Check icon-text vertical alignment (in interactive elements and flex rows)
     const misaligned = [];
     for (const icon of icons) {
-      const parent = icon.el.closest("button, a, [role=button]");
+      // Look for the nearest row container — button, link, or flex parent
+      let parent = icon.el.closest("button, a, [role=button]");
+      if (!parent) {
+        // Check if icon is in a flex row with text siblings
+        const directParent = icon.el.parentElement;
+        if (directParent) {
+          const display = getComputedStyle(directParent).display;
+          if (display === "flex" || display === "inline-flex") parent = directParent;
+        }
+      }
       if (!parent) continue;
-      for (const child of parent.querySelectorAll("span, p, label")) {
-        if (child.textContent.trim() && !child.contains(icon.el)) {
+      for (const child of parent.querySelectorAll("span, p, label, div")) {
+        if (child.textContent.trim() && !child.contains(icon.el) && child !== icon.el) {
+          // Only compare if this child is a text element (not another container with icons)
+          if (child.querySelector("svg, img")) continue;
           const tRect = child.getBoundingClientRect();
+          if (tRect.width < 1 || tRect.height < 1) continue;
           const textCenterY = tRect.top + tRect.height / 2;
           const offset = Math.abs(icon.centerY - textCenterY);
           if (offset > 2) {
@@ -1166,7 +1242,15 @@
       if (!item.el.textContent.trim()) continue;
       // Skip tiny elements, inline tags, and form controls
       if (item.rect.width < 60 || item.rect.height < 20) continue;
-      if (["span", "a", "button", "input", "select", "textarea", "label", "th", "td", "li"].includes(item.tag)) continue;
+      if (["span", "a", "button", "input", "select", "textarea", "label", "th", "td", "li", "table", "nav"].includes(item.tag)) continue;
+      // Skip flex/grid containers whose children are interactive elements with their own padding (toolbars, nav bars)
+      if ((s.display === "flex" || s.display === "inline-flex" || s.display === "grid") && !hasDirectText(item.el)) {
+        const children = Array.from(item.el.children);
+        const allInteractive = children.length > 0 && children.every(c =>
+          ["A", "BUTTON", "INPUT", "SELECT"].includes(c.tagName) || c.getAttribute("role") === "button"
+        );
+        if (allInteractive) continue;
+      }
 
       const pt = parseFloat(s.paddingTop) || 0;
       const pr = parseFloat(s.paddingRight) || 0;
@@ -1291,6 +1375,47 @@
           break;
         }
         ancestor = ancestor.parentElement;
+      }
+    }
+    return issues;
+  }
+
+  // ─── Analysis: Adjacent Panels ──────────────────────────────
+
+  function analyzeAdjacentPanels(elements) {
+    // Find bordered/shadowed panel-like siblings that are nearly touching
+    const panels = elements.filter(item => {
+      const s = item.styles;
+      const hasBorder = s.borderTopWidth && parseFloat(s.borderTopWidth) > 0 && s.borderTopStyle !== "none";
+      const hasShadow = s.boxShadow && s.boxShadow !== "none";
+      if (!hasBorder && !hasShadow) return false;
+      if (item.rect.width < 80 || item.rect.height < 30) return false;
+      if (["span", "a", "button", "input", "select", "textarea", "label"].includes(item.tag)) return false;
+      return true;
+    });
+
+    // Group by parent
+    const byParent = new Map();
+    for (const p of panels) {
+      const parent = p.el.parentElement;
+      if (!parent) continue;
+      if (!byParent.has(parent)) byParent.set(parent, []);
+      byParent.get(parent).push(p);
+    }
+
+    const issues = [];
+    for (const [parent, siblings] of byParent) {
+      if (siblings.length < 2) continue;
+      siblings.sort((a, b) => a.rect.top - b.rect.top);
+      for (let i = 0; i < siblings.length - 1; i++) {
+        const a = siblings[i], b = siblings[i + 1];
+        const gap = b.rect.top - a.rect.bottom;
+        if (gap >= 0 && gap < 4) {
+          issues.push({
+            selectorA: a.selector, selectorB: b.selector,
+            gap: Math.round(gap),
+          });
+        }
       }
     }
     return issues;
@@ -1570,11 +1695,11 @@
     if (alignment.length > 0) {
       const shown = alignment.slice(0, 5);
       for (const a of shown) {
-        findings.push({ severity: "info", category: "misaligned-siblings",
+        findings.push({ severity: "warn", category: "misaligned-siblings",
           message: `"${a.childA}" and "${a.childB}" (in "${a.parentSelector}") have ${a.axis} edges ${a.offset}px off. Siblings in the same row/column should align exactly.` });
       }
       if (alignment.length > 5) {
-        findings.push({ severity: "info", category: "misaligned-siblings",
+        findings.push({ severity: "warn", category: "misaligned-siblings",
           message: `${alignment.length - 5} more sibling element pairs are slightly misaligned (1-3px off).` });
       }
     }
@@ -1684,7 +1809,7 @@
     }
     if (icons.misaligned.length > 0) {
       for (const i of icons.misaligned.slice(0, 3)) {
-        findings.push({ severity: "info", category: "misaligned-icon",
+        findings.push({ severity: "warn", category: "misaligned-icon",
           message: `Icon "${i.iconSelector}" is ${i.offset}px off-center from adjacent text "${i.textSelector}". Icons should be vertically centered with their label.` });
       }
     }
@@ -1738,6 +1863,17 @@
         findings.push({ severity: "warn", category: "nested-panel",
           message: `${nestedPanels.length - 5} more nested panel-in-panel instances detected. Excessive nesting adds visual weight and reduces content hierarchy clarity.` });
       }
+    }
+
+    // ── Adjacent Panels ──
+    const adjacentPanels = analyses.adjacentPanels;
+    for (const p of adjacentPanels.slice(0, 5)) {
+      findings.push({ severity: "warn", category: "adjacent-panels",
+        message: `"${p.selectorA}" and "${p.selectorB}" are only ${p.gap}px apart. Bordered panels stacked this close create visual tension — add at least 8px spacing between them.` });
+    }
+    if (adjacentPanels.length > 5) {
+      findings.push({ severity: "warn", category: "adjacent-panels",
+        message: `${adjacentPanels.length - 5} more pairs of adjacent panels are nearly touching.` });
     }
 
     // ── Rounded Border Sprawl ──
@@ -1816,6 +1952,7 @@
     labels: analyzeFormLabels(elements),
     crampedPadding: analyzeCrampedPadding(elements),
     nestedPanels: analyzeNestedPanels(elements),
+    adjacentPanels: analyzeAdjacentPanels(elements),
     roundedBorderSprawl: analyzeRoundedBorderSprawl(elements),
     charts: detectedCharts,
   };
