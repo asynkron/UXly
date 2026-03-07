@@ -52,8 +52,10 @@ setup() {
   echo "   Authorize and copy the code you receive."
   echo ""
 
-  AUTH_URL="https://accounts.google.com/o/oauth2/auth?response_type=code&scope=https://www.googleapis.com/auth/chromewebstore&client_id=${CHROME_CLIENT_ID}&redirect_uri=urn:ietf:wg:oauth:2.0:oob"
+  AUTH_URL="https://accounts.google.com/o/oauth2/auth?response_type=code&scope=https://www.googleapis.com/auth/chromewebstore&client_id=${CHROME_CLIENT_ID}&redirect_uri=http://127.0.0.1&access_type=offline"
   open "$AUTH_URL" 2>/dev/null || echo "Open this URL: $AUTH_URL"
+  echo "   After authorizing, the browser will redirect to http://127.0.0.1/?code=..."
+  echo "   Copy the 'code' parameter from the URL bar."
 
   echo ""
   read -rp "Paste the authorization code: " AUTH_CODE
@@ -66,7 +68,7 @@ setup() {
     -d "client_secret=${CHROME_CLIENT_SECRET}" \
     -d "code=${AUTH_CODE}" \
     -d "grant_type=authorization_code" \
-    -d "redirect_uri=urn:ietf:wg:oauth:2.0:oob")
+    -d "redirect_uri=http://127.0.0.1")
 
   REFRESH_TOKEN=$(echo "$RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin).get('refresh_token',''))" 2>/dev/null)
 
