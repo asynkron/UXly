@@ -1529,6 +1529,58 @@
 
   const STRATEGY_NAMES = ["evenly-spaced", "analogous", "complementary", "split-complementary", "triadic", "tetradic"];
 
+  // Shade generation (from palette library — Tailwind-scale using OKLCH)
+  const SHADE_LEVELS = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950];
+  const LIGHTER_T = { 50: 0.92, 100: 0.80, 200: 0.62, 300: 0.42, 400: 0.18 };
+  const DARKER_T  = { 600: 0.18, 700: 0.38, 800: 0.56, 900: 0.76, 950: 0.92 };
+  const LIGHT_END = 0.98, DARK_END = 0.10;
+
+  function generateShades(baseL, baseC, baseH) {
+    return SHADE_LEVELS.map(shade => {
+      if (shade === 500) return { shade, L: baseL, C: baseC, H: baseH };
+      let L, cScale;
+      if (shade < 500) {
+        const t = LIGHTER_T[shade];
+        L = baseL + (LIGHT_END - baseL) * t;
+        cScale = 1 - t * 0.95;
+      } else {
+        const t = DARKER_T[shade];
+        L = baseL - (baseL - DARK_END) * t;
+        cScale = 1 - t * 0.65;
+      }
+      return { shade, L, C: baseC * Math.max(0, cScale), H: baseH };
+    });
+  }
+
+  function shadeToHex(s) { return rgbToHex(...oklchToRgb(s.L, s.C, s.H)); }
+
+  // Find the shade that would give sufficient contrast against a background
+  function findContrastingShade(shades, bgRgb, requiredRatio) {
+    const bgLum = relativeLuminance(bgRgb);
+    // Find the shade closest to mid-range that just barely meets the contrast requirement
+    // This gives the most natural suggestion (not jumping to near-black/white)
+    const isLightBg = bgLum > 0.18;
+
+    // Sort by shade level: for light bg, try from mid-dark outward (600→700→800→900→950)
+    // For dark bg, try from mid-light outward (400→300→200→100→50)
+    const passing = [];
+    for (const s of shades) {
+      const rgb = oklchToRgb(s.L, s.C, s.H);
+      const fgLum = relativeLuminance({ r: rgb[0], g: rgb[1], b: rgb[2] });
+      const ratio = contrastRatio(fgLum, bgLum);
+      if (ratio >= requiredRatio) {
+        passing.push({ shade: s.shade, hex: rgbToHex(...rgb), ratio: Math.round(ratio * 100) / 100 });
+      }
+    }
+
+    if (passing.length === 0) return null;
+
+    // Pick the shade closest to 500 (the base) among those that pass
+    // This ensures we suggest the most "colorful" viable shade rather than near-black/white
+    passing.sort((a, b) => Math.abs(a.shade - 500) - Math.abs(b.shade - 500));
+    return passing[0];
+  }
+
   function analyzePalette() {
     // 1. Collect CSS custom properties that look like color tokens
     const COLOR_VAR_PATTERN = /primary|secondary|accent|tertiary|neutral|brand|surface|background|foreground|muted|destructive|success|warning|info|danger|error/i;
@@ -1724,7 +1776,7 @@
     }
 
     if (mainHues.length < 2) {
-      return { tokens, roleHues, paletteSource, strategy: null, score: null, suggestions: [], mainColorCount: mainHues.length };
+      return { tokens, roleHues, paletteSource, strategy: null, score: null, suggestions: [], mainColorCount: mainHues.length, shadeScales: {} };
     }
 
     // 5. Find the best-matching color wheel strategy
@@ -1788,6 +1840,17 @@
       }
     }
 
+    // 7. Generate shade scales for each palette color
+    const shadeScales = {};
+    for (const rh of roleHues) {
+      const shades = generateShades(rh.L, rh.C, rh.hue);
+      shadeScales[rh.role] = shades.map(s => ({
+        shade: s.shade,
+        hex: shadeToHex(s),
+        L: s.L, C: s.C, H: s.H,
+      }));
+    }
+
     return {
       tokens,
       roleHues,
@@ -1797,6 +1860,7 @@
       alignmentScore,
       avgOffset: Math.round(avgOffset),
       suggestions,
+      shadeScales,
     };
   }
 
@@ -1996,12 +2060,76 @@
 
     // ── WCAG Contrast ──
     const contrast = analyses.contrast;
+    const palette = analyses.palette;
     if (contrast.length > 0) {
       const count = contrast.length;
       const shown = contrast.slice(0, 5);
       for (const c of shown) {
+        let suggestion = "";
+        // Try to suggest a palette shade that would fix the contrast
+        if (palette.mainColorCount >= 2) {
+          const fgM = c.fgColor.match(/rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+          const bgM = c.bgColor.match(/rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+          if (fgM && bgM) {
+            const fgRgb = { r: +fgM[1], g: +fgM[2], b: +fgM[3] };
+            const bgRgb = { r: +bgM[1], g: +bgM[2], b: +bgM[3] };
+            const fgOklch = rgbToOklch(fgRgb.r, fgRgb.g, fgRgb.b);
+            const bgOklch = rgbToOklch(bgRgb.r, bgRgb.g, bgRgb.b);
+            const fgIsNeutral = fgOklch[1] < 0.03; // near-achromatic (white/gray/black)
+            const bgIsNeutral = bgOklch[1] < 0.03;
+
+            // Determine: should we fix fg or bg?
+            // If fg is white/black on a colored bg → suggest a darker/lighter bg shade
+            // If fg is colored on neutral bg → suggest a different fg shade
+            // If both colored → suggest fixing whichever is closer to a palette color
+            let fixTarget = "fg"; // "fg" = suggest new foreground, "bg" = suggest new background
+            let matchRole = null, matchDist = Infinity;
+
+            if (fgIsNeutral && !bgIsNeutral) {
+              // White/black text on colored background → darken/lighten the bg
+              fixTarget = "bg";
+              for (const rh of palette.roleHues) {
+                const d = hueDist(bgOklch[2], rh.hue);
+                if (d < matchDist) { matchDist = d; matchRole = rh.role; }
+              }
+            } else if (!fgIsNeutral && bgIsNeutral) {
+              // Colored text on neutral background → adjust the fg
+              fixTarget = "fg";
+              for (const rh of palette.roleHues) {
+                const d = hueDist(fgOklch[2], rh.hue);
+                if (d < matchDist) { matchDist = d; matchRole = rh.role; }
+              }
+            } else {
+              // Both colored or both neutral — match the more chromatic one
+              for (const rh of palette.roleHues) {
+                const dFg = hueDist(fgOklch[2], rh.hue);
+                const dBg = hueDist(bgOklch[2], rh.hue);
+                if (dFg < matchDist) { matchDist = dFg; matchRole = rh.role; fixTarget = "fg"; }
+                if (dBg < matchDist) { matchDist = dBg; matchRole = rh.role; fixTarget = "bg"; }
+              }
+            }
+
+            if (matchRole && matchDist < 40 && palette.shadeScales[matchRole]) {
+              const shades = palette.shadeScales[matchRole].map(s => ({
+                shade: s.shade, L: s.L, C: s.C, H: s.H,
+              }));
+              if (fixTarget === "bg") {
+                // Find a bg shade that gives enough contrast with white/black fg
+                const fix = findContrastingShade(shades, fgRgb, c.required);
+                if (fix) {
+                  suggestion = ` Try ${matchRole}-${fix.shade} (${fix.hex}) as background (${fix.ratio}:1 contrast).`;
+                }
+              } else {
+                const fix = findContrastingShade(shades, bgRgb, c.required);
+                if (fix) {
+                  suggestion = ` Try ${matchRole}-${fix.shade} (${fix.hex}) as text color (${fix.ratio}:1 contrast).`;
+                }
+              }
+            }
+          }
+        }
         findings.push({ severity: "error", category: "low-contrast",
-          message: `"${c.selector}" has contrast ratio ${c.ratio}:1 (requires ${c.required}:1 for ${c.isLarge ? "large" : "normal"} text). Foreground: ${c.fgColor}, background: ${c.bgColor}. Increase the contrast to meet WCAG AA.` });
+          message: `"${c.selector}" has contrast ratio ${c.ratio}:1 (requires ${c.required}:1 for ${c.isLarge ? "large" : "normal"} text). Foreground: ${c.fgColor}, background: ${c.bgColor}.${suggestion || " Increase the contrast to meet WCAG AA."}` });
       }
       if (count > 5) {
         findings.push({ severity: "error", category: "low-contrast",
@@ -2233,13 +2361,32 @@
     }
 
     // ── Color Palette Harmony ──
-    const palette = analyses.palette;
+    // (palette already declared above in contrast section)
     if (palette.mainColorCount >= 2) {
       const srcLabel = palette.paletteSource === "css-variables" ? "CSS custom properties" : "hardcoded colors";
       const hueList = palette.roleHues.map(r => `${r.role}: ${r.hex} (${Math.round(r.hue)}°)`).join(", ");
 
+      // Build shade scale summary for the detected message
+      const scaleSnippets = [];
+      for (const rh of palette.roleHues) {
+        const scale = palette.shadeScales[rh.role];
+        if (scale) {
+          const s50 = scale.find(s => s.shade === 50);
+          const s500 = scale.find(s => s.shade === 500);
+          const s900 = scale.find(s => s.shade === 900);
+          if (s50 && s500 && s900) {
+            scaleSnippets.push(`${rh.role}: ${s50.hex}→${s500.hex}→${s900.hex}`);
+          }
+        }
+      }
+
       findings.push({ severity: "info", category: "palette-detected",
         message: `Detected ${palette.mainColorCount} main palette colors from ${srcLabel}: ${hueList}. Best-matching color wheel strategy: ${palette.bestStrategy} (alignment: ${palette.alignmentScore}%).` });
+
+      if (scaleSnippets.length > 0) {
+        findings.push({ severity: "info", category: "palette-shades",
+          message: `Generated shade scales (50→500→900): ${scaleSnippets.join(" | ")}. Use lighter shades (50-200) for backgrounds and darker shades (700-900) for text to maintain palette cohesion and WCAG contrast.` });
+      }
 
       if (palette.alignmentScore !== null && palette.alignmentScore < 60) {
         findings.push({ severity: "warn", category: "palette-harmony",
@@ -2248,8 +2395,15 @@
 
       for (const s of palette.suggestions) {
         const severity = s.offset > 25 ? "warn" : "info";
+        // Include the full shade scale for the suggested color
+        const suggestedOklch = rgbToOklch(...oklchToRgb(s.currentHue ? palette.roleHues.find(r => r.role === s.role)?.L || 0.5 : 0.5, palette.roleHues.find(r => r.role === s.role)?.C || 0.15, s.targetHue));
+        const suggestedShades = generateShades(suggestedOklch[0], suggestedOklch[1], s.targetHue);
+        const s50 = shadeToHex(suggestedShades.find(sh => sh.shade === 50));
+        const s500 = s.suggestedHex;
+        const s900 = shadeToHex(suggestedShades.find(sh => sh.shade === 900));
+
         findings.push({ severity, category: "palette-suggestion",
-          message: `${s.role}: hue ${s.currentHue}° is ${s.offset}° off the ideal "${palette.bestStrategy}" position (${s.targetHue}°). Current: ${s.currentHex} → suggested: ${s.suggestedHex} for better harmony.` });
+          message: `${s.role}: hue ${s.currentHue}° is ${s.offset}° off the ideal "${palette.bestStrategy}" position (${s.targetHue}°). Current: ${s.currentHex} → suggested: ${s500} (shades: ${s50}→${s500}→${s900}).` });
       }
     }
 
