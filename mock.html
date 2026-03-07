@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UXly Mock</title>
+  <link rel="stylesheet" href="sidepanel.css">
+  <style>
+    body { width: 400px; margin: 0 auto; height: auto; overflow: auto; overflow-x: hidden; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <div class="brand-mark">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+          <rect x="1" y="1" width="18" height="18" rx="4" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M6 10L9 13L14 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div>
+        <h1>UXly</h1>
+        <p class="subtitle">UI Consistency Inspector</p>
+      </div>
+    </div>
+  </header>
+
+  <div class="controls">
+    <button class="btn-primary">
+      <svg class="btn-icon" width="14" height="14" viewBox="0 0 14 14" fill="none">
+        <circle cx="6" cy="6" r="4.5" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M9.5 9.5L13 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+      Analyze Page
+    </button>
+    <button class="btn-ghost" title="Export JSON">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+        <path d="M7 2v7M4 6l3 3 3-3M2 11v1h10v-1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+    <button class="btn-ghost" title="Clear results">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+        <path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+      </svg>
+    </button>
+  </div>
+
+  <nav class="tabs">
+    <button class="tab active" data-tab="findings">Findings</button>
+    <button class="tab" data-tab="summary">Overview</button>
+    <button class="tab" data-tab="consistency">Data</button>
+    <button class="tab" data-tab="components">Components</button>
+    <button class="tab" data-tab="json">JSON</button>
+  </nav>
+
+  <div class="status success">83/100  &bull;  0E 4W 6I  &bull;  8 components</div>
+
+  <main>
+    <section class="tab-content active">
+
+      <!-- Score Ring -->
+      <div class="score-ring-container">
+        <div class="score-ring">
+          <svg viewBox="0 0 120 120">
+            <circle class="score-ring-bg" cx="60" cy="60" r="50"/>
+            <circle class="score-ring-fill good" cx="60" cy="60" r="50"
+              stroke-dasharray="314.16" stroke-dashoffset="53.41"
+              style="transform:rotate(-90deg);transform-origin:center"/>
+          </svg>
+          <div class="score-ring-value">
+            <span class="score-number good">83</span>
+            <span class="score-label">Score</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Severity Counters -->
+      <div class="severity-counters">
+        <div class="sev-counter">
+          <div class="sev-counter-value error">0</div>
+          <div class="sev-counter-label">Errors</div>
+        </div>
+        <div class="sev-counter">
+          <div class="sev-counter-value warn">4</div>
+          <div class="sev-counter-label">Warnings</div>
+        </div>
+        <div class="sev-counter">
+          <div class="sev-counter-value info">6</div>
+          <div class="sev-counter-label">Info</div>
+        </div>
+      </div>
+
+      <!-- Finding Cards -->
+      <div class="finding-card warn">
+        <div class="finding-header">
+          <span class="finding-severity">warn</span>
+          <span class="finding-category">inconsistent-padding</span>
+        </div>
+        <div class="finding-message">Filled buttons: 4 different paddingLeft values (12px, 16px, 14px, 20px). Padding should follow a spacing scale.</div>
+      </div>
+
+      <div class="finding-card warn">
+        <div class="finding-header">
+          <span class="finding-severity">warn</span>
+          <span class="finding-category">too-many-sizes</span>
+        </div>
+        <div class="finding-message">Text elements: 5 different font sizes (10px, 11px, 12px, 13px, 9px). Expected at most 3. Reduce to a consistent scale.</div>
+      </div>
+
+      <div class="finding-card warn">
+        <div class="finding-header">
+          <span class="finding-severity">warn</span>
+          <span class="finding-category">nested-panel</span>
+        </div>
+        <div class="finding-message">"div.stat-card" (180x64) is a bordered panel nested inside "div.summary-stats" (368x140). Consider flattening the hierarchy or removing the inner container's border.</div>
+      </div>
+
+      <div class="finding-card warn">
+        <div class="finding-header">
+          <span class="finding-severity">warn</span>
+          <span class="finding-category">border-radius-sprawl</span>
+        </div>
+        <div class="finding-message">5 distinct border-radius values on large containers: 4px (3x), 6px (8x), 8px (12x), 3px (2x), 12px (1x). A design system typically uses 2-3 radius values.</div>
+      </div>
+
+      <div class="finding-card info">
+        <div class="finding-header">
+          <span class="finding-severity">info</span>
+          <span class="finding-category">crowded-tap-targets</span>
+        </div>
+        <div class="finding-message">"button.tab" and "button.tab" are only 0px apart. Adjacent tap targets should have at least 8px spacing.</div>
+      </div>
+
+      <div class="finding-card info">
+        <div class="finding-header">
+          <span class="finding-severity">info</span>
+          <span class="finding-category">line-too-long</span>
+        </div>
+        <div class="finding-message">"div.finding-message" has ~82 characters per line (368px wide at 11.5px). Optimal line length is 45-75 characters for readability.</div>
+      </div>
+
+      <div class="finding-card info">
+        <div class="finding-header">
+          <span class="finding-severity">info</span>
+          <span class="finding-category">misaligned-siblings</span>
+        </div>
+        <div class="finding-message">"span.finding-severity" and "span.finding-category" (in "div.finding-header") have top edges 1px off. Siblings in the same row should align exactly.</div>
+      </div>
+
+      <div class="finding-card info">
+        <div class="finding-header">
+          <span class="finding-severity">info</span>
+          <span class="finding-category">outlier</span>
+        </div>
+        <div class="finding-message">Text elements: 1 element differs from the other 14 on fontSize. May be an intentional variant.</div>
+      </div>
+
+      <div class="finding-card info">
+        <div class="finding-header">
+          <span class="finding-severity">info</span>
+          <span class="finding-category">rounded-panel-overuse</span>
+        </div>
+        <div class="finding-message">26 large containers have rounded corners. Excessive rounding can make the UI feel cluttered.</div>
+      </div>
+
+      <div class="finding-card info">
+        <div class="finding-header">
+          <span class="finding-severity">info</span>
+          <span class="finding-category">cramped-text-detail</span>
+        </div>
+        <div class="finding-message">"span.score-label" (9px) and "div.sev-counter-value" (20px) are only 2px apart. Need at least 7px.</div>
+      </div>
+
+    </section>
+  </main>
+
+</body>
+</html>

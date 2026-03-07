@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "UXly - UI Consistency Inspector",
+  "version": "1.0.0",
+  "description": "Inspects web pages for UI consistency and detects visual component units for AI agent verification.",
+  "permissions": ["activeTab", "sidePanel", "scripting"],
+  "host_permissions": ["<all_urls>"],
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "UXly Inspector",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
