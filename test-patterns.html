@@ -12,6 +12,18 @@
       --color-secondary: #22c55e;
       --color-accent: #f59e0b;
       --color-destructive: #ef4444;
+
+      /* BAD: Surface layers with inconsistent lightness steps and hue drift */
+      --surface: #ffffff;
+      --surface-light: #f8f8f8;
+      --surface-muted: #e0e0e0;       /* big jump from light */
+      --surface-dark: #d5d5d5;        /* lighter than muted! non-monotonic */
+      --surface-elevated: #f0f0f0;    /* also non-monotonic */
+
+      /* BAD: Background layers with hue drift */
+      --bg-base: #fafafa;
+      --bg-subtle: #f0f3f8;           /* slight blue tint */
+      --bg-muted: #e8e0d8;            /* warm/brown tint — hue drift! */
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: -apple-system, system-ui, sans-serif; background: #f5f5f5; color: #1a1a1a; }

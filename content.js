@@ -1583,7 +1583,7 @@
 
   function analyzePalette() {
     // 1. Collect CSS custom properties that look like color tokens
-    const COLOR_VAR_PATTERN = /primary|secondary|accent|tertiary|neutral|brand|surface|background|foreground|muted|destructive|success|warning|info|danger|error/i;
+    const COLOR_VAR_PATTERN = /primary|secondary|accent|tertiary|neutral|brand|surface|background|foreground|muted|destructive|success|warning|info|danger|error|[-_]bg[-_]|[-_]bg$|^--bg[-_]|^--bg$/i;
     const cssVars = {};
 
     for (const sheet of document.styleSheets) {
@@ -1851,6 +1851,9 @@
       }));
     }
 
+    // 8. Analyze surface/background color layers
+    const surfaceLayers = analyzeSurfaceLayers(cssVars, parseColorToRgb);
+
     return {
       tokens,
       roleHues,
@@ -1861,7 +1864,149 @@
       avgOffset: Math.round(avgOffset),
       suggestions,
       shadeScales,
+      surfaceLayers,
     };
+  }
+
+  // ─── Surface / Background Layer Analysis ──────────────────
+
+  function analyzeSurfaceLayers(cssVars, parseColorToRgb) {
+    // Patterns for background/surface CSS variables
+    const BG_PATTERNS = [
+      // Direct background names
+      /^--(?:color-)?(?:bg|background)(?:[-_](.+))?$/i,
+      // Surface names (Material/shadcn style)
+      /^--(?:color-)?surface(?:[-_](.+))?$/i,
+      // Paper (MUI style)
+      /^--(?:color-)?paper(?:[-_](.+))?$/i,
+      // Canvas
+      /^--(?:color-)?canvas(?:[-_](.+))?$/i,
+      // Muted backgrounds
+      /^--(?:color-)?muted(?:[-_](.+))?$/i,
+      // Card/popover backgrounds (shadcn)
+      /^--(?:color-)?(?:card|popover|dialog|modal|overlay|dropdown)(?:[-_]?(?:bg|background))?$/i,
+      // Base backgrounds
+      /^--(?:color-)?base(?:[-_](.+))?$/i,
+      // Elevated surfaces
+      /^--(?:color-)?elevated(?:[-_](.+))?$/i,
+      // Generic layering: --layer-0, --layer-1, etc.
+      /^--(?:color-)?layer(?:[-_](.+))?$/i,
+    ];
+
+    // Collect all bg/surface tokens into a single unified group
+    const allLayers = [];
+
+    for (const [name, val] of Object.entries(cssVars)) {
+      let matched = false;
+
+      for (const pattern of BG_PATTERNS) {
+        const m = name.match(pattern);
+        if (m) {
+          matched = true;
+          break;
+        }
+      }
+      if (!matched) continue;
+
+      const rgb = parseColorToRgb(val);
+      if (!rgb) continue;
+      const [L, C, H] = rgbToOklch(...rgb);
+
+      allLayers.push({
+        name, rgb, oklch: { L, C, H },
+        hex: rgbToHex(...rgb),
+      });
+    }
+
+    // Also scan for hardcoded bg patterns on elements if no CSS vars found
+    if (allLayers.length === 0) {
+      const bgElements = document.querySelectorAll("[class*='bg-'], [class*='surface'], [class*='background']");
+      const bgColors = new Map();
+      for (const el of bgElements) {
+        const s = getComputedStyle(el);
+        const bg = s.backgroundColor;
+        if (!bg || bg === "rgba(0, 0, 0, 0)") continue;
+        const m = bg.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+        if (!m) continue;
+        const hex = rgbToHex(+m[1], +m[2], +m[3]);
+        bgColors.set(hex, (bgColors.get(hex) || 0) + 1);
+      }
+      if (bgColors.size >= 2) {
+        let idx = 0;
+        for (const [hex] of [...bgColors.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8)) {
+          const rgb = [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
+          const [L, C, H] = rgbToOklch(...rgb);
+          allLayers.push({
+            name: `bg-${idx}`, rgb, oklch: { L, C, H }, hex,
+          });
+          idx++;
+        }
+      }
+    }
+
+    // Need at least 2 layers to analyze
+    if (allLayers.length < 2) return [];
+
+    // Sort all layers by actual lightness (brightest first → darkest last)
+    allLayers.sort((a, b) => b.oklch.L - a.oklch.L);
+
+    // Compute lightness steps between consecutive layers
+    const lightnessValues = allLayers.map(l => l.oklch.L);
+    const lightnessSteps = [];
+    for (let i = 0; i < lightnessValues.length - 1; i++) {
+      lightnessSteps.push(Math.abs(lightnessValues[i] - lightnessValues[i + 1]));
+    }
+
+    // Check step consistency (are the jumps between layers roughly even?)
+    let stepConsistency = 1;
+    if (lightnessSteps.length >= 2) {
+      const avgStep = lightnessSteps.reduce((a, b) => a + b, 0) / lightnessSteps.length;
+      if (avgStep > 0.005) {
+        const maxDev = Math.max(...lightnessSteps.map(s => Math.abs(s - avgStep)));
+        stepConsistency = Math.max(0, 1 - (maxDev / avgStep));
+      }
+    }
+
+    // Check hue consistency (surface layers should stay on the same hue)
+    const chromaValues = allLayers.map(l => l.oklch.C);
+    const hasChroma = chromaValues.some(c => c > 0.005);
+    let hueConsistent = true;
+    if (hasChroma) {
+      const hues = allLayers.filter(l => l.oklch.C > 0.005).map(l => l.oklch.H);
+      if (hues.length >= 2) {
+        const maxHueDist = Math.max(...hues.map((h, i) =>
+          i === 0 ? 0 : hueDist(h, hues[0])
+        ));
+        hueConsistent = maxHueDist < 30;
+      }
+    }
+
+    // Generate suggested even steps if consistency is poor
+    const suggestedLayers = [];
+    if (allLayers.length >= 2 && stepConsistency < 0.5) {
+      const startL = Math.max(...lightnessValues);
+      const endL = Math.min(...lightnessValues);
+      const baseH = allLayers[0].oklch.H;
+      const baseC = allLayers[0].oklch.C;
+      const step = (startL - endL) / (allLayers.length - 1);
+      for (let i = 0; i < allLayers.length; i++) {
+        const L = startL - i * step;
+        suggestedLayers.push({
+          shade: allLayers[i].name,
+          hex: rgbToHex(...oklchToRgb(L, baseC, baseH)),
+          L: Math.round(L * 1000) / 1000,
+        });
+      }
+    }
+
+    return [{
+      group: "surfaces",
+      layers: allLayers.map(l => ({ name: l.name, hex: l.hex, L: Math.round(l.oklch.L * 1000) / 1000, C: Math.round(l.oklch.C * 1000) / 1000 })),
+      lightnessSteps: lightnessSteps.map(s => Math.round(s * 1000) / 1000),
+      stepConsistency: Math.round(stepConsistency * 100),
+      hueConsistent,
+      suggestedLayers,
+    }];
   }
 
   // ─── Findings Engine ──────────────────────────────────────
@@ -2404,6 +2549,33 @@
 
         findings.push({ severity, category: "palette-suggestion",
           message: `${s.role}: hue ${s.currentHue}° is ${s.offset}° off the ideal "${palette.bestStrategy}" position (${s.targetHue}°). Current: ${s.currentHex} → suggested: ${s500} (shades: ${s50}→${s500}→${s900}).` });
+      }
+    }
+
+    // ── Surface / Background Layer Consistency ──
+    if (palette.surfaceLayers && palette.surfaceLayers.length > 0) {
+      for (const group of palette.surfaceLayers) {
+        const layerList = group.layers.map(l => `${l.name}: ${l.hex} (L:${l.L})`).join(", ");
+
+        findings.push({ severity: "info", category: "surface-layers",
+          message: `Detected ${group.layers.length} surface/background layers (sorted by lightness): ${layerList}. Lightness steps: ${group.lightnessSteps.map(s => (s * 100).toFixed(1) + "%").join(", ")}.` });
+
+        if (group.stepConsistency < 50 && group.lightnessSteps.length >= 2) {
+          const steps = group.lightnessSteps.map(s => (s * 100).toFixed(1) + "%").join(", ");
+          findings.push({ severity: "warn", category: "surface-step-consistency",
+            message: `Surface layers have uneven lightness steps (${steps}). Consistent spacing creates a more predictable elevation system. Step consistency: ${group.stepConsistency}%.` });
+
+          if (group.suggestedLayers.length > 0) {
+            const suggested = group.suggestedLayers.map(l => `${l.shade}: ${l.hex}`).join(", ");
+            findings.push({ severity: "info", category: "surface-suggestion",
+              message: `Suggested evenly-spaced layers: ${suggested}.` });
+          }
+        }
+
+        if (!group.hueConsistent) {
+          findings.push({ severity: "warn", category: "surface-hue-drift",
+            message: `Surface layers have inconsistent hue — the tint color shifts between layers. Surface/background tokens should maintain the same hue for visual cohesion.` });
+        }
       }
     }
 
