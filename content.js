@@ -1456,6 +1456,350 @@
     };
   }
 
+  // ─── Color Palette Analysis (OKLCH color wheel) ─────────────
+
+  // Inline OKLCH conversion from palette library
+  function srgbToLinear(c) {
+    c /= 255;
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  }
+  function linearToSrgb(c) {
+    c = Math.max(0, Math.min(1, c));
+    return (c <= 0.0031308 ? c * 12.92 : 1.055 * c ** (1 / 2.4) - 0.055) * 255;
+  }
+  function rgbToOklch(r, g, b) {
+    const lr = srgbToLinear(r), lg = srgbToLinear(g), lb = srgbToLinear(b);
+    const l = 0.4122214708 * lr + 0.5363325363 * lg + 0.0514459929 * lb;
+    const m = 0.2119034982 * lr + 0.6806995451 * lg + 0.1073969566 * lb;
+    const s = 0.0883024619 * lr + 0.2817188376 * lg + 0.6299787005 * lb;
+    const l_ = Math.cbrt(l), m_ = Math.cbrt(m), s_ = Math.cbrt(s);
+    const L = 0.2104542553 * l_ + 0.7936177850 * m_ - 0.0040720468 * s_;
+    const A = 1.9779984951 * l_ - 2.4285922050 * m_ + 0.4505937099 * s_;
+    const B = 0.0259040371 * l_ + 0.7827717662 * m_ - 0.8086757660 * s_;
+    const C = Math.sqrt(A * A + B * B);
+    let H = Math.atan2(B, A) * 180 / Math.PI;
+    if (H < 0) H += 360;
+    return [L, C, H];
+  }
+  function oklchToRgb(L, C, H) {
+    const hRad = H * Math.PI / 180;
+    const A = C * Math.cos(hRad), B_ = C * Math.sin(hRad);
+    const l_ = L + 0.3963377774 * A + 0.2158037573 * B_;
+    const m_ = L - 0.1055613458 * A - 0.0638541728 * B_;
+    const s_ = L - 0.0894841775 * A - 1.2914855480 * B_;
+    const l = l_ ** 3, m = m_ ** 3, s = s_ ** 3;
+    const lr = +4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s;
+    const lg = -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s;
+    const lb = -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s;
+    return [Math.round(linearToSrgb(lr)), Math.round(linearToSrgb(lg)), Math.round(linearToSrgb(lb))];
+  }
+  function rgbToHex(r, g, b) {
+    const cl = v => Math.max(0, Math.min(255, Math.round(v)));
+    return "#" + [r, g, b].map(v => cl(v).toString(16).padStart(2, "0")).join("");
+  }
+  function normHue(h) { return ((h % 360) + 360) % 360; }
+  function hueDist(a, b) { const d = Math.abs(normHue(a) - normHue(b)); return Math.min(d, 360 - d); }
+
+  // Color wheel strategy templates (from palette library)
+  function strategyHues(anchor, count, strategy) {
+    const norm = h => ((h % 360) + 360) % 360;
+    const fromKey = (anch, n, keys) => {
+      const h = keys.slice(0, n).map(a => norm(anch + a));
+      const step = 360 / n;
+      for (let i = h.length; i < n; i++) h.push(norm(anch + i * step));
+      return h;
+    };
+    switch (strategy) {
+      case "complementary": return fromKey(anchor, count, [0, 180]);
+      case "split-complementary": return fromKey(anchor, count, [0, 150, 210]);
+      case "triadic": return fromKey(anchor, count, [0, 120, 240]);
+      case "tetradic": return fromKey(anchor, count, [0, 90, 180, 270]);
+      case "analogous": {
+        const h = [anchor];
+        for (let i = 1; h.length < count; i++) {
+          h.push(norm(anchor + i * 30));
+          if (h.length < count) h.push(norm(anchor - i * 30));
+        }
+        return h;
+      }
+      default: // evenly-spaced
+        return Array.from({ length: count }, (_, i) => norm(anchor + i * (360 / count)));
+    }
+  }
+
+  const STRATEGY_NAMES = ["evenly-spaced", "analogous", "complementary", "split-complementary", "triadic", "tetradic"];
+
+  function analyzePalette() {
+    // 1. Collect CSS custom properties that look like color tokens
+    const COLOR_VAR_PATTERN = /primary|secondary|accent|tertiary|neutral|brand|surface|background|foreground|muted|destructive|success|warning|info|danger|error/i;
+    const cssVars = {};
+
+    for (const sheet of document.styleSheets) {
+      try {
+        for (const rule of sheet.cssRules || []) {
+          if (rule.style) {
+            for (let i = 0; i < rule.style.length; i++) {
+              const prop = rule.style.getPropertyValue(rule.style[i]);
+              const name = rule.style[i];
+              if (name.startsWith("--") && COLOR_VAR_PATTERN.test(name)) {
+                const val = prop.trim();
+                if (val && !val.startsWith("var(")) cssVars[name] = val;
+              }
+            }
+          }
+        }
+      } catch (_) { /* cross-origin stylesheet */ }
+    }
+
+    // Also check :root computed style
+    const rootStyle = getComputedStyle(document.documentElement);
+    const rootProps = [];
+    for (const sheet of document.styleSheets) {
+      try {
+        for (const rule of sheet.cssRules || []) {
+          if (rule.selectorText === ":root" || rule.selectorText === "html") {
+            for (let i = 0; i < rule.style.length; i++) {
+              const name = rule.style[i];
+              if (name.startsWith("--")) rootProps.push(name);
+            }
+          }
+        }
+      } catch (_) {}
+    }
+    for (const name of rootProps) {
+      if (COLOR_VAR_PATTERN.test(name) && !cssVars[name]) {
+        const val = rootStyle.getPropertyValue(name).trim();
+        if (val) cssVars[name] = val;
+      }
+    }
+
+    // 2. Parse collected color values to RGB
+    function parseColorToRgb(val) {
+      // hex
+      if (val.startsWith("#")) {
+        let hex = val.slice(1);
+        if (hex.length === 3) hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+        if (hex.length === 6) {
+          return [parseInt(hex.slice(0, 2), 16), parseInt(hex.slice(2, 4), 16), parseInt(hex.slice(4, 6), 16)];
+        }
+      }
+      // rgb()/rgba()
+      const rgbMatch = val.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+      if (rgbMatch) return [+rgbMatch[1], +rgbMatch[2], +rgbMatch[3]];
+      // hsl()/hsla() — use browser to resolve
+      const hslMatch = val.match(/hsla?\(/);
+      if (hslMatch) {
+        const tmp = document.createElement("div");
+        tmp.style.color = val;
+        document.body.appendChild(tmp);
+        const computed = getComputedStyle(tmp).color;
+        document.body.removeChild(tmp);
+        const m = computed.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+        if (m) return [+m[1], +m[2], +m[3]];
+      }
+      // oklch() — use browser
+      if (val.includes("oklch")) {
+        const tmp = document.createElement("div");
+        tmp.style.color = val;
+        document.body.appendChild(tmp);
+        const computed = getComputedStyle(tmp).color;
+        document.body.removeChild(tmp);
+        const m = computed.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+        if (m) return [+m[1], +m[2], +m[3]];
+      }
+      // Space-separated values (Tailwind/shadcn format: "220 14% 96%") — treat as HSL
+      const spaceMatch = val.match(/^(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)%?\s+(\d+(?:\.\d+)?)%?$/);
+      if (spaceMatch) {
+        const tmp = document.createElement("div");
+        tmp.style.color = `hsl(${spaceMatch[1]}, ${spaceMatch[2]}%, ${spaceMatch[3]}%)`;
+        document.body.appendChild(tmp);
+        const computed = getComputedStyle(tmp).color;
+        document.body.removeChild(tmp);
+        const m = computed.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+        if (m) return [+m[1], +m[2], +m[3]];
+      }
+      return null;
+    }
+
+    // Build token list with parsed colors
+    const tokens = [];
+    for (const [name, val] of Object.entries(cssVars)) {
+      const rgb = parseColorToRgb(val);
+      if (!rgb) continue;
+      const [L, C, H] = rgbToOklch(...rgb);
+      tokens.push({ name, value: val, rgb, oklch: { L, C, H } });
+    }
+
+    // 3. Also collect prominent hardcoded colors from elements (background-color, color, border-color)
+    // that are not from CSS variables
+    const hardcodedHues = new Map(); // hue bucket → {rgb, count, oklch}
+    const seenColors = new Set();
+    const bodyEls = document.body.querySelectorAll("*");
+    for (const el of bodyEls) {
+      if (el.closest("[data-uxly-highlight]")) continue;
+      const s = getComputedStyle(el);
+      for (const prop of ["backgroundColor", "color", "borderTopColor"]) {
+        const val = s[prop];
+        if (!val || val === "rgba(0, 0, 0, 0)") continue;
+        const m = val.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+        if (!m) continue;
+        const [r, g, b] = [+m[1], +m[2], +m[3]];
+        const key = `${r},${g},${b}`;
+        if (seenColors.has(key)) { // already counted
+          const bucket = Math.round(rgbToOklch(r, g, b)[2] / 10) * 10;
+          if (hardcodedHues.has(bucket)) hardcodedHues.get(bucket).count++;
+          continue;
+        }
+        seenColors.add(key);
+        const [L, C, H] = rgbToOklch(r, g, b);
+        // Skip near-achromatic colors (grays, blacks, whites)
+        if (C < 0.03) continue;
+        // Skip very light (near-white) and very dark (near-black)
+        if (L > 0.95 || L < 0.1) continue;
+
+        const bucket = Math.round(H / 10) * 10;
+        if (!hardcodedHues.has(bucket)) {
+          hardcodedHues.set(bucket, { rgb: [r, g, b], oklch: { L, C, H }, count: 1 });
+        } else {
+          hardcodedHues.get(bucket).count++;
+        }
+      }
+    }
+
+    // 4. Determine the main palette hues
+    // From tokens: group by semantic role
+    const tokensByRole = {};
+    for (const t of tokens) {
+      // Skip achromatic tokens
+      if (t.oklch.C < 0.03) continue;
+      // Extract role from name: --color-primary-500 → "primary"
+      const roleMatch = t.name.match(/(primary|secondary|tertiary|accent|brand|neutral|destructive|success|warning|info|danger|error)/i);
+      const role = roleMatch ? roleMatch[1].toLowerCase() : "other";
+      if (!tokensByRole[role]) tokensByRole[role] = [];
+      tokensByRole[role].push(t);
+    }
+
+    // Find the "base" hue for each role (the shade-500 or the most common hue)
+    const roleHues = [];
+    for (const [role, toks] of Object.entries(tokensByRole)) {
+      if (role === "other" || role === "neutral") continue;
+      // Prefer -500 shade or base variant
+      const base = toks.find(t => t.name.match(/[-_](500|base|DEFAULT)$/i)) || toks[0];
+      roleHues.push({ role, hue: base.oklch.H, L: base.oklch.L, C: base.oklch.C, name: base.name, hex: rgbToHex(...base.rgb) });
+    }
+
+    // If no tokens found, use the top hardcoded hue clusters
+    let paletteSource = "css-variables";
+    let mainHues = roleHues.map(r => r.hue);
+
+    if (mainHues.length < 2) {
+      paletteSource = "hardcoded-colors";
+      // Sort hue buckets by count, take top N
+      const sorted = [...hardcodedHues.entries()]
+        .sort((a, b) => b[1].count - a[1].count)
+        .filter(([, v]) => v.count >= 2);
+      // Merge adjacent buckets (within 20°)
+      const merged = [];
+      for (const [bucket, data] of sorted) {
+        const existing = merged.find(m => hueDist(m.hue, bucket) < 20);
+        if (existing) {
+          existing.count += data.count;
+        } else {
+          merged.push({ hue: bucket, count: data.count, oklch: data.oklch, rgb: data.rgb });
+        }
+      }
+      merged.sort((a, b) => b.count - a.count);
+      const topN = merged.slice(0, Math.min(6, merged.length));
+      mainHues = topN.map(m => m.hue);
+      // Build roleHues from hardcoded clusters
+      const names = ["primary", "secondary", "tertiary", "accent", "neutral"];
+      roleHues.length = 0;
+      topN.forEach((m, i) => {
+        roleHues.push({
+          role: names[i] || `accent-${i - 3}`,
+          hue: m.hue, L: m.oklch.L, C: m.oklch.C,
+          hex: rgbToHex(...m.rgb), count: m.count,
+        });
+      });
+    }
+
+    if (mainHues.length < 2) {
+      return { tokens, roleHues, paletteSource, strategy: null, score: null, suggestions: [], mainColorCount: mainHues.length };
+    }
+
+    // 5. Find the best-matching color wheel strategy
+    let bestStrategy = null;
+    let bestCost = Infinity;
+    let bestTemplate = null;
+
+    for (const strat of STRATEGY_NAMES) {
+      // Try every possible anchor (1° resolution)
+      for (let anchor = 0; anchor < 360; anchor++) {
+        const template = strategyHues(anchor, mainHues.length, strat);
+        // Hungarian-style greedy matching: assign each input hue to nearest template slot
+        const used = new Set();
+        let cost = 0;
+        const assignments = [];
+
+        for (const inputH of mainHues) {
+          let bestSlot = -1, bestDist = Infinity;
+          for (let j = 0; j < template.length; j++) {
+            if (used.has(j)) continue;
+            const d = hueDist(inputH, template[j]);
+            if (d < bestDist) { bestDist = d; bestSlot = j; }
+          }
+          used.add(bestSlot);
+          cost += bestDist;
+          assignments.push({ input: inputH, target: template[bestSlot], offset: bestDist });
+        }
+
+        if (cost < bestCost) {
+          bestCost = cost;
+          bestStrategy = strat;
+          bestTemplate = assignments;
+        }
+      }
+    }
+
+    // 6. Compute alignment score and suggestions
+    const avgOffset = bestCost / mainHues.length;
+    // Score: 100 = perfect alignment, 0 = 45°+ average offset
+    const alignmentScore = Math.max(0, Math.round(100 - (avgOffset / 45) * 100));
+
+    const suggestions = [];
+    if (bestTemplate) {
+      for (let i = 0; i < bestTemplate.length; i++) {
+        const a = bestTemplate[i];
+        if (a.offset > 8) {
+          const role = roleHues[i];
+          // Compute the suggested color at the target hue
+          const suggestedRgb = oklchToRgb(role.L, role.C, a.target);
+          const suggestedHex = rgbToHex(...suggestedRgb);
+          suggestions.push({
+            role: role.role,
+            currentHue: Math.round(a.input),
+            targetHue: Math.round(a.target),
+            offset: Math.round(a.offset),
+            currentHex: role.hex,
+            suggestedHex,
+            name: role.name || null,
+          });
+        }
+      }
+    }
+
+    return {
+      tokens,
+      roleHues,
+      paletteSource,
+      mainColorCount: mainHues.length,
+      bestStrategy,
+      alignmentScore,
+      avgOffset: Math.round(avgOffset),
+      suggestions,
+    };
+  }
+
   // ─── Findings Engine ──────────────────────────────────────
 
   function generateFindings(consistency, elements, analyses) {
@@ -1888,6 +2232,27 @@
         message: `${roundedSprawl.totalRoundedPanels} large containers have rounded corners. Excessive rounding can make the UI feel cluttered — consider using sharp corners for outer containers and reserving rounding for inner cards/components.` });
     }
 
+    // ── Color Palette Harmony ──
+    const palette = analyses.palette;
+    if (palette.mainColorCount >= 2) {
+      const srcLabel = palette.paletteSource === "css-variables" ? "CSS custom properties" : "hardcoded colors";
+      const hueList = palette.roleHues.map(r => `${r.role}: ${r.hex} (${Math.round(r.hue)}°)`).join(", ");
+
+      findings.push({ severity: "info", category: "palette-detected",
+        message: `Detected ${palette.mainColorCount} main palette colors from ${srcLabel}: ${hueList}. Best-matching color wheel strategy: ${palette.bestStrategy} (alignment: ${palette.alignmentScore}%).` });
+
+      if (palette.alignmentScore !== null && palette.alignmentScore < 60) {
+        findings.push({ severity: "warn", category: "palette-harmony",
+          message: `Palette colors are poorly aligned on the color wheel (${palette.alignmentScore}% alignment to "${palette.bestStrategy}" strategy, avg offset: ${palette.avgOffset}°). Colors may look arbitrary rather than intentional.` });
+      }
+
+      for (const s of palette.suggestions) {
+        const severity = s.offset > 25 ? "warn" : "info";
+        findings.push({ severity, category: "palette-suggestion",
+          message: `${s.role}: hue ${s.currentHue}° is ${s.offset}° off the ideal "${palette.bestStrategy}" position (${s.targetHue}°). Current: ${s.currentHex} → suggested: ${s.suggestedHex} for better harmony.` });
+      }
+    }
+
     // Sort: errors first, then warns, then info
     const severityOrder = { error: 0, warn: 1, info: 2 };
     findings.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
@@ -1954,6 +2319,7 @@
     nestedPanels: analyzeNestedPanels(elements),
     adjacentPanels: analyzeAdjacentPanels(elements),
     roundedBorderSprawl: analyzeRoundedBorderSprawl(elements),
+    palette: analyzePalette(),
     charts: detectedCharts,
   };
 
