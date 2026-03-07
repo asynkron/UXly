@@ -1151,6 +1151,50 @@
     return issues;
   }
 
+  // ─── Analysis: Cramped Padding ──────────────────────────
+
+  function analyzeCrampedPadding(elements) {
+    const issues = [];
+    for (const item of elements) {
+      // Only check elements with visible boundaries (border or non-transparent bg)
+      const s = item.styles;
+      const hasBorder = s.borderTopWidth && parseFloat(s.borderTopWidth) > 0 && s.borderTopStyle !== "none";
+      const hasBg = !isTransparent(s.backgroundColor);
+      if (!hasBorder && !hasBg) continue;
+
+      // Must contain text
+      if (!item.el.textContent.trim()) continue;
+      // Skip tiny elements, inline tags, and form controls
+      if (item.rect.width < 60 || item.rect.height < 20) continue;
+      if (["span", "a", "button", "input", "select", "textarea", "label", "th", "td", "li"].includes(item.tag)) continue;
+
+      const pt = parseFloat(s.paddingTop) || 0;
+      const pr = parseFloat(s.paddingRight) || 0;
+      const pb = parseFloat(s.paddingBottom) || 0;
+      const pl = parseFloat(s.paddingLeft) || 0;
+      const fontSize = parseFloat(s.fontSize) || 14;
+
+      // Padding should be at least ~50% of font size on all sides for comfortable reading
+      const minPadding = Math.max(6, fontSize * 0.5);
+      const cramped = [];
+      if (pt < minPadding) cramped.push(`top:${Math.round(pt)}px`);
+      if (pr < minPadding) cramped.push(`right:${Math.round(pr)}px`);
+      if (pb < minPadding) cramped.push(`bottom:${Math.round(pb)}px`);
+      if (pl < minPadding) cramped.push(`left:${Math.round(pl)}px`);
+
+      if (cramped.length >= 2) {
+        issues.push({
+          selector: item.selector,
+          padding: `${Math.round(pt)} ${Math.round(pr)} ${Math.round(pb)} ${Math.round(pl)}`,
+          fontSize: Math.round(fontSize),
+          crampedSides: cramped,
+          minRecommended: Math.round(minPadding),
+        });
+      }
+    }
+    return issues;
+  }
+
   // ─── Analysis: Form Labels ────────────────────────────────
 
   function analyzeFormLabels(elements) {
@@ -1669,6 +1713,19 @@
       }
     }
 
+    // ── Cramped Padding ──
+    const cramped = analyses.crampedPadding;
+    if (cramped.length > 0) {
+      for (const c of cramped.slice(0, 5)) {
+        findings.push({ severity: "warn", category: "cramped-padding",
+          message: `"${c.selector}" has text (${c.fontSize}px) pressed against its borders (padding: ${c.padding}px). Cramped sides: ${c.crampedSides.join(", ")}. Use at least ${c.minRecommended}px padding for comfortable reading.` });
+      }
+      if (cramped.length > 5) {
+        findings.push({ severity: "warn", category: "cramped-padding",
+          message: `${cramped.length - 5} more containers have insufficient padding around their text content.` });
+      }
+    }
+
     // ── Nested Panels ──
     const nestedPanels = analyses.nestedPanels;
     if (nestedPanels.length > 0) {
@@ -1757,6 +1814,7 @@
     icons: analyzeIconConsistency(),
     nestedScroll: analyzeNestedScrolling(elements),
     labels: analyzeFormLabels(elements),
+    crampedPadding: analyzeCrampedPadding(elements),
     nestedPanels: analyzeNestedPanels(elements),
     roundedBorderSprawl: analyzeRoundedBorderSprawl(elements),
     charts: detectedCharts,
@@ -1794,6 +1852,9 @@
   for (const f of findings) {
     result.summary.findingCounts[f.severity]++;
   }
+
+  // When loaded via script tag, expose result globally for test pages
+  if (typeof window !== 'undefined') window.uxlyResult = result;
 
   return result;
 })();

@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>UXly Test Patterns</title>
+  <script src="https://unpkg.com/lucide@latest"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: -apple-system, system-ui, sans-serif; background: #f5f5f5; color: #1a1a1a; }
@@ -58,7 +59,9 @@
       margin-bottom: 8px;
     }
     .good-sidebar a {
-      display: block;
+      display: flex;
+      align-items: center;
+      gap: 8px;
       padding: 8px 12px;
       font-size: 14px;
       color: #334155;
@@ -66,6 +69,7 @@
       border-radius: 6px;
       margin-bottom: 2px;
     }
+    .good-sidebar a i { width: 16px; height: 16px; flex-shrink: 0; }
     .good-sidebar a:hover { background: #f1f5f9; }
     .good-sidebar a.active { background: #eff6ff; color: #2563eb; font-weight: 600; }
 
@@ -488,6 +492,233 @@
     .bad-cramped p { font-size: 14px; color: #475569; }
     /* no margins between them — 0px gap */
 
+    /* BAD 14: Text cramped against panel borders */
+    .bad-cramped-padding {
+      margin-bottom: 32px;
+      display: flex;
+      gap: 12px;
+    }
+    .bad-cramped-padding-a {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 3px 4px;
+      font-size: 14px;
+      color: #334155;
+      flex: 1;
+    }
+    .bad-cramped-padding-b {
+      background: #fff;
+      border: 2px solid #3b82f6;
+      border-radius: 8px;
+      padding: 2px 3px;
+      font-size: 13px;
+      color: #334155;
+      flex: 1;
+    }
+    .bad-cramped-padding-c {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 6px;
+      padding: 4px 5px;
+      font-size: 14px;
+      color: #1e40af;
+      flex: 1;
+    }
+
+    /* BAD 15: Adjacent content blocks with no spacing */
+    .bad-adjacent {
+      margin-bottom: 32px;
+    }
+    .bad-adjacent-block {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .bad-adjacent-block + .bad-adjacent-block {
+      margin-top: 1px; /* nearly touching */
+    }
+    .bad-adjacent-block h4 { font-size: 15px; font-weight: 700; color: #1e293b; }
+    .bad-adjacent-block p { font-size: 13px; color: #64748b; margin-top: 4px; }
+
+    /* BAD 16: Tight line-height on multi-line text */
+    .bad-line-height {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 32px;
+    }
+    .bad-line-height p {
+      font-size: 14px;
+      line-height: 1.0;
+      color: #334155;
+      margin-bottom: 12px;
+    }
+    .bad-line-height .cramped-small {
+      font-size: 12px;
+      line-height: 1.1;
+      color: #475569;
+    }
+
+    /* BAD 17: Wall of text — no max-width, extremely long lines */
+    .bad-wall-of-text {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 32px;
+    }
+    .bad-wall-of-text p {
+      font-size: 14px;
+      color: #334155;
+      line-height: 1.6;
+      /* no max-width — text spans entire container */
+    }
+
+    /* BAD 18: Cramped info banner — text pressed against all edges */
+    .bad-banner {
+      background: #fef3c7;
+      border: 1px solid #f59e0b;
+      border-radius: 6px;
+      padding: 4px 6px;
+      font-size: 14px;
+      color: #92400e;
+      margin-bottom: 32px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .bad-banner-icon {
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    /* GOOD: Properly padded panels for comparison */
+    .good-padded-panels {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+    .good-padded-panel {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 16px;
+      font-size: 14px;
+      color: #334155;
+      flex: 1;
+    }
+
+    /* GOOD: Consistent icon buttons */
+    .good-icon-buttons {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 32px;
+    }
+    .good-icon-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      border: 1px solid #e2e8f0;
+      background: #fff;
+      color: #334155;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .good-icon-btn i { width: 16px; height: 16px; }
+
+    /* GOOD: Consistent nav with icons */
+    .good-icon-nav {
+      display: flex;
+      gap: 4px;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 6px;
+      margin-bottom: 32px;
+    }
+    .good-icon-nav-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #64748b;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .good-icon-nav-item:hover { background: #f1f5f9; color: #334155; }
+    .good-icon-nav-item.active { background: #eff6ff; color: #2563eb; }
+    .good-icon-nav-item i { width: 16px; height: 16px; }
+
+    /* BAD 19: Inconsistent icon sizes */
+    .bad-icon-sizes {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 32px;
+    }
+    .bad-icon-sizes-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      border: 1px solid #e2e8f0;
+      background: #fff;
+      color: #334155;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    /* BAD 20: Misaligned icons with text */
+    .bad-icon-align {
+      margin-bottom: 32px;
+    }
+    .bad-icon-align-row {
+      display: flex;
+      align-items: flex-start; /* deliberately NOT center */
+      gap: 8px;
+      padding: 12px 16px;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      margin-bottom: 4px;
+      font-size: 14px;
+      color: #334155;
+    }
+
+    /* BAD 21: Mixed icon styles — stroke + filled + different weights */
+    .bad-icon-mixed {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+    .bad-icon-mixed-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 16px;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 12px;
+      color: #64748b;
+      cursor: pointer;
+      width: 80px;
+    }
+
     /* Good footer */
     .good-footer {
       background: #1e293b;
@@ -516,15 +747,15 @@
     <!-- ═══ GOOD: Consistent sidebar ═══ -->
     <aside class="good-sidebar">
       <h3>Navigation</h3>
-      <a href="#" class="active">Overview</a>
-      <a href="#">Analytics</a>
-      <a href="#">Customers</a>
-      <a href="#">Products</a>
-      <a href="#">Orders</a>
+      <a href="#" class="active"><i data-lucide="layout-dashboard"></i> Overview</a>
+      <a href="#"><i data-lucide="bar-chart-3"></i> Analytics</a>
+      <a href="#"><i data-lucide="users"></i> Customers</a>
+      <a href="#"><i data-lucide="package"></i> Products</a>
+      <a href="#"><i data-lucide="shopping-cart"></i> Orders</a>
       <h3 style="margin-top: 16px;">Settings</h3>
-      <a href="#">General</a>
-      <a href="#">Security</a>
-      <a href="#">Billing</a>
+      <a href="#"><i data-lucide="settings"></i> General</a>
+      <a href="#"><i data-lucide="shield"></i> Security</a>
+      <a href="#"><i data-lucide="credit-card"></i> Billing</a>
     </aside>
 
     <main class="main-content">
@@ -692,6 +923,129 @@
         <p>This paragraph has zero margin from the heading above. The text feels crammed together and hurts readability. There should be visual breathing room between a heading and its body text.</p>
       </div>
 
+      <!-- ═══ BAD 14: Cramped padding ═══ -->
+      <span class="section-label bad">BAD: Text cramped against panel borders</span>
+      <div class="bad-cramped-padding">
+        <div class="bad-cramped-padding-a">This text is crammed right up against the border with only 3px padding. It feels claustrophobic and hard to read.</div>
+        <div class="bad-cramped-padding-b">Even worse with a thick border — 2px padding makes the text feel trapped inside the box.</div>
+        <div class="bad-cramped-padding-c">Colored background makes the cramped padding even more obvious and uncomfortable.</div>
+      </div>
+
+      <!-- ═══ GOOD: Properly padded panels ═══ -->
+      <span class="section-label good">GOOD: Properly padded panels</span>
+      <div class="good-padded-panels">
+        <div class="good-padded-panel">This panel has 16px padding. The text has breathing room from the border and feels comfortable to read.</div>
+        <div class="good-padded-panel">Consistent padding across all panels creates a clean, professional look with proper visual hierarchy.</div>
+        <div class="good-padded-panel">The spacing between the text and the edges gives the content room to breathe. Much better.</div>
+      </div>
+
+      <!-- ═══ BAD 15: Adjacent blocks too close ═══ -->
+      <span class="section-label bad">BAD: Adjacent content blocks nearly touching</span>
+      <div class="bad-adjacent">
+        <div class="bad-adjacent-block">
+          <h4>First Section</h4>
+          <p>This card has content that ends right at the bottom edge of the padding.</p>
+        </div>
+        <div class="bad-adjacent-block">
+          <h4>Second Section</h4>
+          <p>This card is only 1px below the first one. They should have clear visual separation.</p>
+        </div>
+        <div class="bad-adjacent-block">
+          <h4>Third Section</h4>
+          <p>Another block crammed right below. The lack of vertical rhythm makes the page feel dense and cluttered.</p>
+        </div>
+      </div>
+
+      <!-- ═══ BAD 16: Tight line-height ═══ -->
+      <span class="section-label bad">BAD: Tight line-height on multi-line text</span>
+      <div class="bad-line-height">
+        <p>This paragraph has a line-height of 1.0 which means the lines are touching each other. When you have multiple lines of text like this, the descenders of one line crash into the ascenders of the next line. It makes reading extremely uncomfortable and fatiguing, especially for longer passages of text that wrap across multiple lines.</p>
+        <p class="cramped-small">This smaller text also has tight line spacing at 1.1x. The reduced size combined with cramped lines makes it nearly impossible to track which line you're reading. Your eye constantly loses its place and has to re-find the correct line.</p>
+      </div>
+
+      <!-- ═══ BAD 17: Wall of text ═══ -->
+      <span class="section-label bad">BAD: Extremely long lines of text</span>
+      <div class="bad-wall-of-text">
+        <p>This is a wall of text that spans the entire width of the container without any max-width constraint. Research shows that optimal line length for readability is between 45 and 75 characters per line. When text extends much beyond that, the reader's eye has difficulty tracking from the end of one line to the beginning of the next line, causing fatigue and reducing comprehension. This is particularly problematic on wide screens where the container might be 800+ pixels wide, resulting in extremely long lines that are painful to read. The ideal solution is to either constrain the container width or set a max-width on the text element itself.</p>
+      </div>
+
+      <!-- ═══ BAD 18: Cramped banner ═══ -->
+      <span class="section-label bad">BAD: Cramped info banner</span>
+      <div class="bad-banner">
+        <span class="bad-banner-icon">!</span>
+        <span>Warning: Your subscription expires in 3 days. Please renew to avoid service interruption. Contact support if you need assistance with billing.</span>
+      </div>
+
+      <!-- ═══ GOOD: Consistent icon buttons ═══ -->
+      <span class="section-label good">GOOD: Consistent icon buttons (all 16px)</span>
+      <div class="good-icon-buttons">
+        <button class="good-icon-btn"><i data-lucide="save"></i> Save</button>
+        <button class="good-icon-btn"><i data-lucide="trash-2"></i> Delete</button>
+        <button class="good-icon-btn"><i data-lucide="download"></i> Export</button>
+        <button class="good-icon-btn"><i data-lucide="share-2"></i> Share</button>
+      </div>
+
+      <!-- ═══ GOOD: Icon nav bar ═══ -->
+      <span class="section-label good">GOOD: Consistent icon nav (all 16px, aligned)</span>
+      <div class="good-icon-nav">
+        <a class="good-icon-nav-item active"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+        <a class="good-icon-nav-item"><i data-lucide="users"></i> Users</a>
+        <a class="good-icon-nav-item"><i data-lucide="bar-chart-3"></i> Analytics</a>
+        <a class="good-icon-nav-item"><i data-lucide="settings"></i> Settings</a>
+      </div>
+
+      <!-- ═══ BAD 19: Inconsistent icon sizes ═══ -->
+      <span class="section-label bad">BAD: Inconsistent icon sizes in same row</span>
+      <div class="bad-icon-sizes">
+        <button class="bad-icon-sizes-btn"><i data-lucide="plus" style="width:12px;height:12px;"></i> Add Item</button>
+        <button class="bad-icon-sizes-btn"><i data-lucide="pencil" style="width:20px;height:20px;"></i> Edit</button>
+        <button class="bad-icon-sizes-btn"><i data-lucide="trash-2" style="width:14px;height:14px;"></i> Remove</button>
+        <button class="bad-icon-sizes-btn"><i data-lucide="copy" style="width:24px;height:24px;"></i> Duplicate</button>
+        <button class="bad-icon-sizes-btn"><i data-lucide="eye" style="width:16px;height:16px;"></i> Preview</button>
+      </div>
+
+      <!-- ═══ BAD 20: Misaligned icons with text ═══ -->
+      <span class="section-label bad">BAD: Icons misaligned with their text labels</span>
+      <div class="bad-icon-align">
+        <div class="bad-icon-align-row">
+          <i data-lucide="check-circle" style="width:16px;height:16px;margin-top:4px;color:#22c55e;flex-shrink:0;"></i>
+          <span>Payment processed successfully. Your receipt has been sent to your email address.</span>
+        </div>
+        <div class="bad-icon-align-row">
+          <i data-lucide="alert-triangle" style="width:20px;height:20px;margin-top:-2px;color:#f59e0b;flex-shrink:0;"></i>
+          <span>Your trial expires in 3 days. Upgrade now to keep access to all features.</span>
+        </div>
+        <div class="bad-icon-align-row">
+          <i data-lucide="x-circle" style="width:14px;height:14px;margin-top:6px;color:#ef4444;flex-shrink:0;"></i>
+          <span>Unable to connect to the server. Please check your internet connection and try again.</span>
+        </div>
+      </div>
+
+      <!-- ═══ BAD 21: Mixed icon treatments ═══ -->
+      <span class="section-label bad">BAD: Inconsistent icon sizes in a grid</span>
+      <div class="bad-icon-mixed">
+        <div class="bad-icon-mixed-item">
+          <i data-lucide="home" style="width:20px;height:20px;color:#334155;"></i>
+          Home
+        </div>
+        <div class="bad-icon-mixed-item">
+          <i data-lucide="mail" style="width:28px;height:28px;color:#334155;"></i>
+          Inbox
+        </div>
+        <div class="bad-icon-mixed-item">
+          <i data-lucide="bell" style="width:16px;height:16px;color:#334155;"></i>
+          Alerts
+        </div>
+        <div class="bad-icon-mixed-item">
+          <i data-lucide="calendar" style="width:24px;height:24px;color:#334155;"></i>
+          Calendar
+        </div>
+        <div class="bad-icon-mixed-item">
+          <i data-lucide="file-text" style="width:32px;height:32px;color:#334155;"></i>
+          Docs
+        </div>
+      </div>
+
       <!-- ═══ GOOD: Consistent table ═══ -->
       <span class="section-label good">GOOD: Consistent table</span>
       <table class="good-table">
@@ -713,5 +1067,86 @@
     &copy; 2026 Test App. All rights reserved.
   </footer>
 
+  <div id="uxly-results" style="
+    position: fixed; bottom: 0; left: 0; right: 0;
+    max-height: 50vh; overflow-y: auto;
+    background: #0d0d14; color: #e2e4ec;
+    font-family: 'SF Mono', ui-monospace, monospace;
+    font-size: 12px; line-height: 1.5;
+    border-top: 2px solid #8b7cf0;
+    padding: 16px 20px;
+    z-index: 99999;
+    display: none;
+  ">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <strong style="color:#8b7cf0;font-size:14px;">UXly Results</strong>
+      <button onclick="document.getElementById('uxly-results').style.display='none'" style="
+        background:none;border:1px solid #333;color:#888;padding:2px 8px;border-radius:4px;cursor:pointer;font-family:inherit;font-size:11px;
+      ">Close</button>
+    </div>
+    <div id="uxly-summary" style="margin-bottom:12px;"></div>
+    <div id="uxly-findings-list"></div>
+    <details style="margin-top:12px;">
+      <summary style="cursor:pointer;color:#8b7cf0;font-size:11px;">Raw JSON</summary>
+      <pre id="uxly-json" style="white-space:pre-wrap;word-break:break-all;margin-top:8px;"></pre>
+    </details>
+  </div>
+
+  <script>
+    // Initialize Lucide icons first
+    lucide.createIcons();
+
+    // Load and run UXly after icons have rendered
+    setTimeout(() => {
+      const s = document.createElement('script');
+      s.src = 'content.js';
+      s.onload = () => {
+        if (window.uxlyResult) {
+          showResults(window.uxlyResult);
+        } else {
+          console.warn('UXly: no result returned');
+        }
+      };
+      s.onerror = () => console.error('UXly: failed to load content.js');
+      document.body.appendChild(s);
+    }, 100);
+
+    function showResults(result) {
+      const panel = document.getElementById('uxly-results');
+      panel.style.display = 'block';
+
+      // Summary
+      const fc = result.summary.findingCounts || {};
+      const scoreColor = result.score >= 80 ? '#22c55e' : result.score >= 50 ? '#f59e0b' : '#ef4444';
+      document.getElementById('uxly-summary').innerHTML = `
+        <div style="display:flex;align-items:center;gap:20px;">
+          <div style="font-size:36px;font-weight:800;color:${scoreColor};">${result.score}<span style="font-size:16px;color:#666;">/100</span></div>
+          <div style="display:flex;gap:12px;">
+            <span style="color:#ef4444;font-weight:600;">${fc.error || 0} errors</span>
+            <span style="color:#f59e0b;font-weight:600;">${fc.warn || 0} warnings</span>
+            <span style="color:#60a5fa;font-weight:600;">${fc.info || 0} info</span>
+          </div>
+          <div style="color:#666;">${result.visualUnits.length} components</div>
+        </div>`;
+
+      // Findings list
+      const list = document.getElementById('uxly-findings-list');
+      const sevColors = { error: '#ef4444', warn: '#f59e0b', info: '#60a5fa' };
+      const sevBg = { error: 'rgba(239,68,68,0.1)', warn: 'rgba(245,158,11,0.1)', info: 'rgba(96,165,250,0.1)' };
+      list.innerHTML = result.findings.map(f => `
+        <div style="padding:6px 10px;margin-bottom:4px;border-radius:4px;background:${sevBg[f.severity]};border-left:3px solid ${sevColors[f.severity]};">
+          <span style="color:${sevColors[f.severity]};font-weight:700;font-size:10px;text-transform:uppercase;margin-right:8px;">${f.severity}</span>
+          <span style="color:#8b7cf0;font-size:11px;margin-right:8px;">${f.category}</span>
+          <span style="color:#c8cad8;font-size:12px;">${f.message}</span>
+        </div>
+      `).join('');
+
+      // Raw JSON
+      document.getElementById('uxly-json').textContent = JSON.stringify(result, null, 2);
+
+      console.log('UXly Score:', result.score + '/100');
+      console.log('Findings:', result.findings.length);
+    }
+  </script>
 </body>
 </html>
