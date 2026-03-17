@@ -1436,6 +1436,8 @@
       if (item.rect.width < 50 || item.rect.height < 50) return false;
       // Skip inline text elements
       if (["span", "a", "button", "input", "select", "textarea", "label"].includes(item.tag)) return false;
+      // Skip table elements — thead/th/td with backgrounds are standard table styling, not panels
+      if (["table", "thead", "tbody", "tfoot", "tr", "th", "td"].includes(item.tag)) return false;
       // Skip image/media placeholder elements — they have background color but no text content
       // These are common in product cards, hero sections, etc.
       if (hasBg && !hasBorder && !hasShadow && !hasDirectText(item.el) && item.el.children.length === 0) return false;
