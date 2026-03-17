@@ -1476,13 +1476,13 @@
     }
 
     function isContentFrame(item) {
-      // Large containers that take most of their parent's width are content frames, not visual panels
+      // Containers that take most of their parent's width are content frames, not visual panels
       const parent = item.el.parentElement;
       if (!parent || parent === document.body) return false;
       const parentRect = parent.getBoundingClientRect();
       if (parentRect.width === 0) return false;
       const widthRatio = item.rect.width / parentRect.width;
-      return widthRatio > 0.85 && item.rect.height > 200;
+      return widthRatio > 0.95;
     }
 
     const panels = elements.filter(isPanel);
