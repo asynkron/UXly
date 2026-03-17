@@ -773,6 +773,11 @@
     const issues = [];
     for (const item of elements) {
       if (!hasDirectText(item.el)) continue;
+      // Skip elements whose visible text is empty/whitespace (e.g. conditional-visibility placeholders)
+      const visibleText = item.el.textContent.trim();
+      if (!visibleText || visibleText.length === 0) continue;
+      // Skip elements that are effectively invisible (near-zero dimensions)
+      if (item.rect.width < 2 || item.rect.height < 2) continue;
       const fg = parseColor(item.styles.color);
       if (!fg) continue;
       const bg = getEffectiveBackgroundColor(item.el);
@@ -804,6 +809,12 @@
     let smallCount = 0; // 24-44px range
     for (const item of interactive) {
       if (item.rect.width <= 0 || item.rect.height <= 0) continue;
+      // Skip textareas and text inputs — they often auto-grow on focus/input
+      if (item.tag === "textarea") continue;
+      if (item.tag === "input" && (!item.el.type || item.el.type === "text" || item.el.type === "search" || item.el.type === "email" || item.el.type === "url")) {
+        // Only skip if one dimension is reasonable (>= 24px) — truly tiny inputs are still flagged
+        if (Math.max(item.rect.width, item.rect.height) >= 24) continue;
+      }
       const minDim = Math.min(item.rect.width, item.rect.height);
       if (minDim < 24) {
         tooSmall.push({
@@ -999,6 +1010,12 @@
           }
           const runMed = median(runGaps);
           const runMaxDev = Math.max(...runGaps.map((g) => Math.abs(g - runMed)));
+          // Skip if the gap ratio is extreme — not a real repeated list (just mismatched siblings)
+          const minGap = Math.min(...runGaps.filter(g => g >= 0));
+          const maxGap = Math.max(...runGaps);
+          if (maxGap > 0 && maxGap / Math.max(minGap, 1) > 10) continue;
+          // Skip if max deviation exceeds 2x the median — gaps vary too wildly
+          if (runMed > 0 && runMaxDev > runMed * 2) continue;
           if (runMaxDev > 2 && runMed > 0) {
             issues.push({
               parentSelector: getSelector(parent),
@@ -1053,7 +1070,10 @@
       if (item.styles.position === "static") continue;
 
       if (z > 100 && !item.isInteractive) {
-        excessiveZIndex.push({ selector: item.selector, zIndex: z });
+        // Skip off-canvas elements — likely collapsed sidebars, modals, off-canvas drawers
+        if (item.rect.right >= -50 && item.rect.left <= window.innerWidth + 50) {
+          excessiveZIndex.push({ selector: item.selector, zIndex: z });
+        }
       }
       positioned.push({ ...item, z });
     }
@@ -1062,9 +1082,38 @@
     const interactiveEls = positioned.filter((p) => p.isInteractive);
     const nonInteractiveEls = positioned.filter((p) => !p.isInteractive && p.z > 0);
 
+    const vw = window.innerWidth;
+
     for (const interactive of interactiveEls) {
+      // Skip elements that are off-canvas horizontally — likely collapsed sidebars, off-canvas drawers
+      // (Don't filter vertically — below-the-fold content in scrollable pages should still be checked)
+      if (interactive.rect.right < -50 || interactive.rect.left > vw + 50) continue;
+
+      // Skip elements inside overflow:hidden containers that clip them out of view
+      let clippedAway = false;
+      let ancestor = interactive.el.parentElement;
+      while (ancestor && ancestor !== document.body) {
+        const as = getComputedStyle(ancestor);
+        if (as.overflow === "hidden" || as.overflowX === "hidden" || as.overflowY === "hidden") {
+          const ar = ancestor.getBoundingClientRect();
+          // If the interactive element is fully outside the clipped ancestor's bounds, skip it
+          if (interactive.rect.right < ar.left || interactive.rect.left > ar.right ||
+              interactive.rect.bottom < ar.top || interactive.rect.top > ar.bottom) {
+            clippedAway = true;
+            break;
+          }
+        }
+        ancestor = ancestor.parentElement;
+      }
+      if (clippedAway) continue;
+
+      // Skip tiny or zero-area elements (likely collapsed/hidden)
+      if (interactive.rect.width < 5 || interactive.rect.height < 5) continue;
+
       for (const blocker of nonInteractiveEls) {
         if (blocker.z <= interactive.z) continue;
+        // Skip blockers that are off-canvas horizontally
+        if (blocker.rect.right < -50 || blocker.rect.left > vw + 50) continue;
         // Check if blocker fully covers the interactive element
         if (blocker.rect.left <= interactive.rect.left &&
             blocker.rect.top <= interactive.rect.top &&
@@ -1304,6 +1353,12 @@
         if (allInteractive) continue;
       }
 
+      // Skip flex-centered containers — content is visually centered regardless of padding
+      if (s.display === "flex" || s.display === "inline-flex") {
+        const cs = getComputedStyle(item.el);
+        if (cs.alignItems === "center" && cs.justifyContent === "center") continue;
+      }
+
       const pt = parseFloat(s.paddingTop) || 0;
       const pr = parseFloat(s.paddingRight) || 0;
       const pb = parseFloat(s.paddingBottom) || 0;
@@ -1381,6 +1436,9 @@
       if (item.rect.width < 50 || item.rect.height < 50) return false;
       // Skip inline text elements
       if (["span", "a", "button", "input", "select", "textarea", "label"].includes(item.tag)) return false;
+      // Skip image/media placeholder elements — they have background color but no text content
+      // These are common in product cards, hero sections, etc.
+      if (hasBg && !hasBorder && !hasShadow && !hasDirectText(item.el) && item.el.children.length === 0) return false;
       return true;
     }
 
@@ -1396,6 +1454,31 @@
       const vw = window.innerWidth;
       const vh = window.innerHeight;
       return item.rect.width > vw * 0.9 && item.rect.height > vh * 0.8;
+    }
+
+    function isGridOrFlexContainer(item) {
+      // Grid/flex containers that hold cards are layout wrappers, not visual panels
+      const s = item.styles || getComputedStyle(item.el);
+      const display = s.display;
+      if (display === "grid" || display === "inline-grid" || display === "flex" || display === "inline-flex") return true;
+      // Also check if the element has many direct children that look like cards (>= 3 same-tag children)
+      const children = item.el.children;
+      if (children.length >= 3) {
+        const tags = {};
+        for (const ch of children) { tags[ch.tagName] = (tags[ch.tagName] || 0) + 1; }
+        if (Object.values(tags).some(count => count >= 3)) return true;
+      }
+      return false;
+    }
+
+    function isContentFrame(item) {
+      // Large containers that take most of their parent's width are content frames, not visual panels
+      const parent = item.el.parentElement;
+      if (!parent || parent === document.body) return false;
+      const parentRect = parent.getBoundingClientRect();
+      if (parentRect.width === 0) return false;
+      const widthRatio = item.rect.width / parentRect.width;
+      return widthRatio > 0.85 && item.rect.height > 200;
     }
 
     const panels = elements.filter(isPanel);
@@ -1415,6 +1498,10 @@
           if (isAppShellWrapper(ancestorPanel)) break;
           // Skip if outer is a layout element (standard app structure)
           if (isLayoutElement(ancestorPanel)) break;
+          // Skip if outer is a grid/flex container holding cards (standard dashboard layout)
+          if (isGridOrFlexContainer(ancestorPanel)) break;
+          // Skip if outer is a content frame (takes most of parent width, just a wrapper)
+          if (isContentFrame(ancestorPanel)) break;
           // Skip if inner is nearly the same size (just a wrapper)
           const areaRatio = (inner.rect.width * inner.rect.height) /
             (ancestorPanel.rect.width * ancestorPanel.rect.height);
@@ -1868,9 +1955,24 @@
     }
 
     // 6. Compute alignment score and suggestions
-    const avgOffset = bestCost / mainHues.length;
+    // Exclude semantic roles from harmony scoring — their hues are dictated by convention
+    const SEMANTIC_SCORE_ROLES = new Set(["error", "danger", "destructive", "success", "warning", "info"]);
+    let nonSemanticCost = 0, nonSemanticCount = 0;
+    if (bestTemplate) {
+      for (let i = 0; i < bestTemplate.length; i++) {
+        if (!SEMANTIC_SCORE_ROLES.has(roleHues[i]?.role)) {
+          nonSemanticCost += bestTemplate[i].offset;
+          nonSemanticCount++;
+        }
+      }
+    }
+    const avgOffset = nonSemanticCount > 0 ? nonSemanticCost / nonSemanticCount : bestCost / mainHues.length;
     // Score: 100 = perfect alignment, 0 = 45°+ average offset
     const alignmentScore = Math.max(0, Math.round(100 - (avgOffset / 45) * 100));
+
+    // Semantic roles whose hue is chosen for meaning (red=error, green=success, etc.)
+    // These should not be adjusted to fit a color wheel strategy.
+    const SEMANTIC_HUE_ROLES = new Set(["error", "danger", "destructive", "success", "warning", "info"]);
 
     const suggestions = [];
     if (bestTemplate) {
@@ -1878,6 +1980,8 @@
         const a = bestTemplate[i];
         if (a.offset > 8) {
           const role = roleHues[i];
+          // Skip semantic colors — their hues are chosen for meaning, not aesthetics
+          if (SEMANTIC_HUE_ROLES.has(role.role)) continue;
           // Compute the suggested color at the target hue
           const suggestedRgb = oklchToRgb(role.L, role.C, a.target);
           const suggestedHex = rgbToHex(...suggestedRgb);
@@ -2065,8 +2169,14 @@
 
   // ─── Findings Engine ──────────────────────────────────────
 
-  function generateFindings(consistency, elements, analyses) {
+  function generateFindings(consistency, elements, analyses, elementToComponent) {
     const findings = [];
+    // Map selector labels to uxlyIds for post-processing
+    const selectorToUxlyId = {};
+    for (const item of elements) {
+      const eid = getUxlyId(item.el);
+      if (eid) selectorToUxlyId[item.selector] = eid;
+    }
 
     const EXPECTED_VARIANTS = {
       "filled-button": { fontSize: 3, fontWeight: 2, borderRadius: 2, backgroundColor: 3, color: 3, paddingTop: 3, paddingBottom: 3, paddingLeft: 3, paddingRight: 3 },
@@ -2077,7 +2187,7 @@
       "footer-link": { fontSize: 2, fontWeight: 2, color: 2, paddingTop: 2, paddingBottom: 2, paddingLeft: 2, paddingRight: 2 },
       "header-link": { fontSize: 2, fontWeight: 2, color: 2, paddingTop: 2, paddingBottom: 2, paddingLeft: 2, paddingRight: 2 },
       "body-link": { fontSize: 2, fontWeight: 2, color: 3, paddingTop: 2, paddingBottom: 2, paddingLeft: 2, paddingRight: 2 },
-      text: { fontFamily: 2, fontSize: 6, fontWeight: 4 },
+      text: { fontFamily: 2, fontSize: 8, fontWeight: 4 },
     };
 
     const ROLE_LABELS = {
@@ -2252,9 +2362,12 @@
         if (!isDupe) colorList.push(rgb);
       }
     }
-    if (colorList.length > 20) {
+    // Raise threshold if charts are present — charts legitimately use many data-series colors
+    const hasCharts = analyses.charts && analyses.charts.length > 0;
+    const sprawlThreshold = hasCharts ? 30 : 20;
+    if (colorList.length > sprawlThreshold) {
       findings.push({ severity: "warn", category: "color-sprawl",
-        message: `Page uses ~${colorList.length} perceptually distinct colors. A well-constrained system uses 8-15. Colors may be set ad-hoc instead of from a token palette.` });
+        message: `Page uses ~${colorList.length} perceptually distinct colors. A well-constrained system uses ${hasCharts ? "15-25 (with charts)" : "8-15"}. Colors may be set ad-hoc instead of from a token palette.` });
     }
 
     // ── WCAG Contrast ──
@@ -2637,6 +2750,19 @@
     const severityOrder = { error: 0, warn: 1, info: 2 };
     findings.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
 
+    // Tag findings with componentId by extracting selector from message
+    for (const f of findings) {
+      if (f.componentId) continue;
+      // Messages reference selectors as "selector" (quoted)
+      const m = f.message.match(/^"([^"]+)"/);
+      if (m) {
+        const eid = selectorToUxlyId[m[1]];
+        if (eid && elementToComponent[eid]) {
+          f.componentId = elementToComponent[eid];
+        }
+      }
+    }
+
     return findings;
   }
 
@@ -2707,7 +2833,31 @@
     charts: detectedCharts,
   };
 
-  const findings = generateFindings(consistency, elements, analyses);
+  // Build element → component mapping (smallest containing component wins)
+  // Flatten all units (including nested children) sorted smallest-first
+  const allFlatUnits = [];
+  (function flattenUnits(units) {
+    for (const u of units) {
+      if (u.children) flattenUnits(u.children);
+      allFlatUnits.push(u);
+    }
+  })(visualUnits);
+  allFlatUnits.sort((a, b) => rectArea(a.rect) - rectArea(b.rect));
+
+  // Map each element's uxlyId to its smallest containing component's uxlyId
+  const elementToComponent = {};
+  for (const item of elements) {
+    const elId = getUxlyId(item.el);
+    if (!elId) continue;
+    for (const u of allFlatUnits) {
+      if (u.outerElement && u.outerElement.contains(item.el)) {
+        elementToComponent[elId] = u.uxlyId;
+        break;
+      }
+    }
+  }
+
+  const findings = generateFindings(consistency, elements, analyses, elementToComponent);
   const score = computeScore(findings);
 
   const result = {
@@ -2743,6 +2893,175 @@
 
   // When loaded via script tag, expose result globally for test pages
   if (typeof window !== 'undefined') window.uxlyResult = result;
+
+  // ─── Pixel-based contrast refinement ────────────────────────
+  // Three-step workflow for accurate background color sampling:
+  //   1. Call window.uxlyHideText() — makes all text invisible so the screenshot shows only backgrounds
+  //   2. Take a screenshot externally (CDP, extension captureVisibleTab, etc.)
+  //   3. Call window.uxlyRestoreText() — restores text visibility
+  //   4. Call window.uxlyRefineWithScreenshot(dataUrl) — samples background pixels from the clean screenshot
+
+  if (typeof window !== 'undefined') {
+    const _savedColors = new Map();
+
+    window.uxlyHideText = function() {
+      _savedColors.clear();
+      for (const item of elements) {
+        if (!hasDirectText(item.el)) continue;
+        _savedColors.set(item.el, item.el.style.color);
+        item.el.style.color = 'transparent';
+      }
+      return _savedColors.size;
+    };
+
+    window.uxlyRestoreText = function() {
+      for (const [el, original] of _savedColors) {
+        el.style.color = original;
+      }
+      _savedColors.clear();
+    };
+
+    window.uxlyRefineWithScreenshot = async function(dataUrl) {
+      // 1. Load the clean (text-hidden) screenshot into a canvas
+      const img = new Image();
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+        img.src = dataUrl;
+      });
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      ctx.drawImage(img, 0, 0);
+
+      const dpr = window.devicePixelRatio || 1;
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+
+      // 2. Sample background color from the clean screenshot
+      function sampleBackground(rect) {
+        // Sample a grid of points within the element — no text to worry about
+        const samplePoints = [];
+        const cols = 3, rows = 3;
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            const x = rect.left + (rect.width * (c + 0.5)) / cols;
+            const y = rect.top + (rect.height * (r + 0.5)) / rows;
+            samplePoints.push([x, y]);
+          }
+        }
+
+        const bgPixels = [];
+        for (const [x, y] of samplePoints) {
+          const px = Math.round(x * dpr);
+          const py = Math.round(y * dpr);
+          if (px < 0 || py < 0 || px >= canvas.width || py >= canvas.height) continue;
+          const data = ctx.getImageData(px, py, 1, 1).data;
+          bgPixels.push({ r: data[0], g: data[1], b: data[2] });
+        }
+
+        if (bgPixels.length === 0) return null;
+
+        // Return the median color (by luminance) to handle gradient edges
+        bgPixels.sort((a, b) => relativeLuminance(a) - relativeLuminance(b));
+        return bgPixels[Math.floor(bgPixels.length / 2)];
+      }
+
+      // 3. Re-analyze contrast for all text elements using pixel sampling
+      const newContrast = [];
+      for (const item of elements) {
+        if (!hasDirectText(item.el)) continue;
+        const visibleText = item.el.textContent.trim();
+        if (!visibleText) continue;
+        if (item.rect.width < 2 || item.rect.height < 2) continue;
+
+        // Only check elements in the viewport
+        if (item.rect.bottom < 0 || item.rect.top > vh) continue;
+        if (item.rect.right < 0 || item.rect.left > vw) continue;
+
+        const fg = parseColor(item.styles.color);
+        if (!fg) continue;
+
+        const bg = sampleBackground(item.rect);
+        if (!bg) continue;
+
+        const ratio = contrastRatio(relativeLuminance(fg), relativeLuminance(bg));
+        const fontSize = parseFloat(item.styles.fontSize);
+        const fontWeight = parseInt(item.styles.fontWeight) || 400;
+        const isLarge = fontSize >= 18 || (fontSize >= 14 && fontWeight >= 700);
+        const required = isLarge ? 3 : 4.5;
+
+        if (ratio < required) {
+          newContrast.push({
+            selector: item.selector, tag: item.tag,
+            fontSize: item.styles.fontSize, fontWeight: item.styles.fontWeight,
+            fgColor: item.styles.color,
+            bgColor: `rgb(${bg.r}, ${bg.g}, ${bg.b})`,
+            bgSource: "pixel-sampled",
+            ratio: Math.round(ratio * 100) / 100, required, isLarge,
+          });
+        }
+      }
+
+      // 4. Rebuild findings with pixel-sampled contrast
+      const refinedFindings = result.findings.filter(f => f.category !== "low-contrast");
+      const palette = result.analyses.palette;
+
+      for (const c of newContrast.slice(0, 5)) {
+        let suggestion = "";
+        if (palette && palette.roleHues && palette.shadeScales) {
+          const fgRgb = parseColor(c.fgColor);
+          const bgRgb = parseColor(c.bgColor);
+          if (fgRgb && bgRgb) {
+            const fgOklch = rgbToOklch(fgRgb.r, fgRgb.g, fgRgb.b);
+            const bgOklch = rgbToOklch(bgRgb.r, bgRgb.g, bgRgb.b);
+            let matchRole = null, matchDist = Infinity, fixTarget = "fg";
+            for (const rh of palette.roleHues) {
+              const dFg = hueDist(fgOklch[2], rh.hue);
+              const dBg = hueDist(bgOklch[2], rh.hue);
+              if (dFg < matchDist) { matchDist = dFg; matchRole = rh.role; fixTarget = "fg"; }
+              if (dBg < matchDist) { matchDist = dBg; matchRole = rh.role; fixTarget = "bg"; }
+            }
+            if (matchRole && matchDist < 40 && palette.shadeScales[matchRole]) {
+              const shades = palette.shadeScales[matchRole].map(s => ({ shade: s.shade, L: s.L, C: s.C, H: s.H }));
+              const targetRgb = fixTarget === "bg" ? fgRgb : bgRgb;
+              const fix = findContrastingShade(shades, targetRgb, c.required);
+              if (fix) {
+                suggestion = ` Try ${matchRole}-${fix.shade} (${fix.hex}) as ${fixTarget === "bg" ? "background" : "text color"} (${fix.ratio}:1 contrast).`;
+              }
+            }
+          }
+        }
+        refinedFindings.push({
+          severity: "error", category: "low-contrast",
+          message: `"${c.selector}" has contrast ratio ${c.ratio}:1 (requires ${c.required}:1 for ${c.isLarge ? "large" : "normal"} text). Foreground: ${c.fgColor}, background: ${c.bgColor} (pixel-sampled).${suggestion || " Increase the contrast to meet WCAG AA."}`,
+        });
+      }
+      if (newContrast.length > 5) {
+        refinedFindings.push({
+          severity: "error", category: "low-contrast",
+          message: `${newContrast.length - 5} more elements fail WCAG AA contrast requirements (pixel-sampled).`,
+        });
+      }
+
+      // Update counts and score
+      const findingCounts = { error: 0, warn: 0, info: 0 };
+      for (const f of refinedFindings) findingCounts[f.severity]++;
+
+      const refined = {
+        ...result,
+        findings: refinedFindings,
+        summary: { ...result.summary, findingCounts },
+        analyses: { ...result.analyses, contrast: newContrast },
+        contrastMethod: "pixel-sampled",
+        score: computeScore(refinedFindings),
+      };
+
+      window.uxlyResult = refined;
+      return refined;
+    };
+  }
 
   return result;
 })();

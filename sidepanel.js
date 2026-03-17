@@ -167,17 +167,38 @@
       </div>
     `;
 
+    // Build uxlyId → component lookup from visual units
+    const componentById = {};
+    (function indexUnits(units) {
+      for (const u of units) {
+        if (u.uxlyId) componentById[u.uxlyId] = u;
+        if (u.children) indexUnits(u.children);
+      }
+    })(data.visualUnits || []);
+
     for (const f of findings) {
+      const comp = f.componentId ? componentById[f.componentId] : null;
       html += `<div class="finding-card ${f.severity}">
         <div class="finding-header">
           <span class="finding-severity">${f.severity}</span>
           <span class="finding-category">${esc(f.category)}</span>
         </div>
         <div class="finding-message">${esc(f.message)}</div>
+        ${comp ? `<div class="finding-component" data-uxly-id="${esc(f.componentId)}"><span class="finding-component-icon">\u25CB</span> ${esc(comp.type)} <span class="finding-component-selector">${esc(comp.selector)}</span></div>` : ""}
       </div>`;
     }
 
     container.innerHTML = html;
+
+    // Click component link → scroll to & highlight on page
+    container.querySelectorAll(".finding-component").forEach((el) => {
+      el.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const uxlyId = el.dataset.uxlyId;
+        const comp = componentById[uxlyId];
+        if (comp) highlightComponent(comp);
+      });
+    });
   }
 
   // ─── Render Consistency ────────────────────────────────────
@@ -237,6 +258,25 @@
       return;
     }
 
+    // Count findings per component (including children's findings)
+    const findingsByComponent = {};
+    for (const f of (data.findings || [])) {
+      if (f.componentId) {
+        if (!findingsByComponent[f.componentId]) findingsByComponent[f.componentId] = { error: 0, warn: 0, info: 0, total: 0 };
+        findingsByComponent[f.componentId][f.severity]++;
+        findingsByComponent[f.componentId].total++;
+      }
+    }
+
+    function findingsBadge(uxlyId) {
+      const fc = findingsByComponent[uxlyId];
+      if (!fc || fc.total === 0) return "";
+      const parts = [];
+      if (fc.error) parts.push(`<span class="finding-severity error">${fc.error}E</span>`);
+      if (fc.warn) parts.push(`<span class="finding-severity warn">${fc.warn}W</span>`);
+      return parts.length ? ` \u2022 ${parts.join(" ")}` : "";
+    }
+
     // Build a flat lookup so click handlers can find any unit by path
     const unitLookup = [];
 
@@ -252,10 +292,11 @@
         const uid = registerUnit(c);
         const hasKids = c.children && c.children.length > 0;
         const own = c.ownMemberCount ?? c.memberCount;
-        html += `<div class="component-child" data-uid="${uid}">
+        const badge = findingsBadge(c.uxlyId);
+        html += `<div class="component-child" data-uid="${uid}"${c.uxlyId ? ` data-cid="${c.uxlyId}"` : ""}>
           <span class="child-type">${esc(c.type)}</span>
           <span class="child-selector">${esc(c.selector)}</span>
-          <span class="child-details">${c.rect.width}\u00d7${c.rect.height} \u2022 ${own} own${hasKids ? ` \u2022 ${c.children.length} sub` : ""}</span>
+          <span class="child-details">${c.rect.width}\u00d7${c.rect.height} \u2022 ${own} own${hasKids ? ` \u2022 ${c.children.length} sub` : ""}${badge}</span>
         </div>`;
         if (hasKids) {
           html += renderChildrenList(c.children, depth + 1);
@@ -270,11 +311,12 @@
       const u = data.visualUnits[i];
       const uid = registerUnit(u);
       const hasChildren = u.children && u.children.length > 0;
-      html += `<div class="component-item" data-uid="${uid}">
+      const badge = findingsBadge(u.uxlyId);
+      html += `<div class="component-item" data-uid="${uid}"${u.uxlyId ? ` data-cid="${u.uxlyId}"` : ""}>
         <div class="component-type">${esc(u.type)}</div>
         <div class="component-selector">${esc(u.selector)}</div>
         <div class="component-details">${u.rect.width}\u00d7${u.rect.height}  \u2022  (${u.rect.left}, ${u.rect.top})</div>
-        <div class="component-children">${u.ownMemberCount ?? u.memberCount} own element${(u.ownMemberCount ?? u.memberCount) !== 1 ? "s" : ""} \u2022 ${u.memberCount} total${hasChildren ? ` \u2022 ${u.children.length} sub-component${u.children.length > 1 ? "s" : ""}` : ""}</div>
+        <div class="component-children">${u.ownMemberCount ?? u.memberCount} own element${(u.ownMemberCount ?? u.memberCount) !== 1 ? "s" : ""} \u2022 ${u.memberCount} total${hasChildren ? ` \u2022 ${u.children.length} sub-component${u.children.length > 1 ? "s" : ""}` : ""}${badge}</div>
       </div>`;
 
       if (hasChildren) {
@@ -309,6 +351,7 @@
           let rect = fallbackRect;
           const el = uxlyId ? document.querySelector(`[data-uxly-id="${uxlyId}"]`) : null;
           if (el) {
+            el.scrollIntoView({ behavior: "instant", block: "center", inline: "nearest" });
             const live = el.getBoundingClientRect();
             rect = { top: live.top, left: live.left, width: live.width, height: live.height };
           }

@@ -738,6 +738,516 @@
       width: 80px;
     }
 
+    /* GOOD: compound icon+text buttons */
+    .good-compound-buttons {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 32px;
+    }
+    .good-compound-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      border: none;
+      background: #2563eb;
+      color: #fff;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    /* GOOD: rich buttons with icon + text + subtext */
+    .good-rich-buttons {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+    .good-rich-btn {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 20px;
+      border-radius: 10px;
+      border: 1px solid #e2e8f0;
+      background: #fff;
+      cursor: pointer;
+      font-family: inherit;
+      text-align: left;
+      flex: 1;
+    }
+    .good-rich-btn-text { display: flex; flex-direction: column; }
+    .good-rich-btn-label { font-size: 14px; font-weight: 600; color: #1e293b; }
+    .good-rich-btn-sub { font-size: 12px; color: #64748b; margin-top: 2px; }
+
+    /* BAD 22: compound buttons with misaligned icons */
+    .bad-compound-buttons {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 32px;
+    }
+    .bad-compound-btn-a {
+      display: flex;
+      align-items: flex-start; /* icon sits high */
+      gap: 8px;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      border: none;
+      background: #2563eb;
+      color: #fff;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .bad-compound-btn-b {
+      display: flex;
+      align-items: center;
+      gap: 4px; /* too tight */
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      border: none;
+      background: #2563eb;
+      color: #fff;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .bad-compound-btn-c {
+      display: flex;
+      align-items: flex-end; /* icon sits low */
+      gap: 8px;
+      padding: 10px 20px;
+      border-radius: 4px; /* inconsistent radius */
+      font-size: 13px; /* inconsistent size */
+      font-weight: 500; /* inconsistent weight */
+      border: none;
+      background: #3a7ff5; /* near-miss color */
+      color: #fff;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    /* BAD 23: rich buttons with alignment issues */
+    .bad-rich-buttons {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+    .bad-rich-btn-a {
+      display: flex;
+      align-items: flex-start; /* icon pushed down by margin, not centered with text block */
+      gap: 12px;
+      padding: 16px 20px;
+      border-radius: 10px;
+      border: 1px solid #e2e8f0;
+      background: #fff;
+      cursor: pointer;
+      font-family: inherit;
+      text-align: left;
+      flex: 1;
+    }
+    .bad-rich-btn-b {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px; /* inconsistent padding */
+      border-radius: 6px; /* inconsistent radius */
+      border: 1px solid #e2e8f0;
+      background: #fff;
+      cursor: pointer;
+      font-family: inherit;
+      text-align: left;
+      flex: 1;
+    }
+    .bad-rich-btn-c {
+      display: flex;
+      align-items: center;
+      gap: 8px; /* inconsistent gap */
+      padding: 16px 20px;
+      border-radius: 10px;
+      border: 2px solid #3b82f6; /* inconsistent border */
+      background: #eff6ff; /* inconsistent background */
+      cursor: pointer;
+      font-family: inherit;
+      text-align: left;
+      flex: 1;
+    }
+    .bad-rich-btn-label { font-size: 14px; font-weight: 600; color: #1e293b; display: block; }
+    .bad-rich-btn-sub { font-size: 12px; color: #64748b; display: block; margin-top: 2px; }
+
+    /* BAD 24: action bar with inconsistent button sizes */
+    .bad-action-bar {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 6px;
+      margin-bottom: 32px;
+    }
+    .bad-action-a {
+      display: flex; align-items: center; justify-content: center;
+      width: 32px; height: 32px;
+      border: none; background: #f1f5f9; border-radius: 6px;
+      cursor: pointer; color: #334155;
+    }
+    .bad-action-b {
+      display: flex; align-items: center; justify-content: center;
+      width: 28px; height: 28px; /* different size */
+      border: none; background: #f1f5f9; border-radius: 4px; /* different radius */
+      cursor: pointer; color: #334155;
+    }
+    .bad-action-c {
+      display: flex; align-items: center; justify-content: center;
+      width: 36px; height: 36px; /* different size */
+      border: none; background: #f1f5f9; border-radius: 8px; /* different radius */
+      cursor: pointer; color: #334155;
+    }
+    .bad-action-separator {
+      width: 1px; height: 20px; background: #e2e8f0; margin: 0 4px;
+    }
+    .bad-action-d {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 12px;
+      border: none; background: #f1f5f9; border-radius: 6px;
+      cursor: pointer; color: #334155;
+      font-size: 13px; font-family: inherit;
+    }
+    .bad-action-e {
+      display: flex; align-items: center; gap: 6px;
+      padding: 8px 16px; /* different padding */
+      border: none; background: #f1f5f9; border-radius: 6px;
+      cursor: pointer; color: #334155;
+      font-size: 14px; /* different size */
+      font-family: inherit;
+      font-weight: 600; /* different weight */
+    }
+
+    /* GOOD: Status badges */
+    .good-badges { display: flex; gap: 8px; margin-bottom: 32px; }
+    .good-badge {
+      padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600;
+    }
+    .good-badge-success { background: #dcfce7; color: #166534; }
+    .good-badge-warning { background: #fef3c7; color: #92400e; }
+    .good-badge-error { background: #fee2e2; color: #991b1b; }
+    .good-badge-neutral { background: #f1f5f9; color: #475569; }
+
+    /* BAD 25: Inconsistent badges */
+    .bad-badges { display: flex; gap: 8px; align-items: center; margin-bottom: 32px; }
+    .bad-badge-a {
+      padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600;
+      background: #dcfce7; color: #166534;
+    }
+    .bad-badge-b {
+      padding: 6px 16px; border-radius: 4px; font-size: 11px; font-weight: 400;
+      background: #fef3c7; color: #92400e;
+    }
+    .bad-badge-c {
+      padding: 2px 6px; border-radius: 20px; font-size: 14px; font-weight: 700;
+      background: #fee2e2; color: #991b1b;
+    }
+    .bad-badge-d {
+      padding: 8px 12px; border-radius: 0; font-size: 10px; font-weight: 500;
+      background: #f1f5f9; color: #475569; text-transform: uppercase; letter-spacing: 0.1em;
+    }
+
+    /* GOOD: Avatar list */
+    .good-avatar-list {
+      background: #fff; border: 1px solid #e2e8f0; border-radius: 8px;
+      padding: 8px; margin-bottom: 32px;
+    }
+    .good-avatar-row {
+      display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 6px;
+    }
+    .good-avatar-row:hover { background: #f8fafc; }
+    .good-avatar {
+      width: 36px; height: 36px; border-radius: 50%; display: flex;
+      align-items: center; justify-content: center; color: #fff;
+      font-size: 13px; font-weight: 700; flex-shrink: 0;
+    }
+    .good-avatar-name { font-size: 14px; font-weight: 600; color: #1e293b; }
+    .good-avatar-role { font-size: 12px; color: #64748b; }
+
+    /* BAD 26: Inconsistent avatar list */
+    .bad-avatar-list {
+      background: #fff; border: 1px solid #e2e8f0; border-radius: 8px;
+      padding: 8px; margin-bottom: 32px;
+    }
+    .bad-avatar-row-a { display: flex; align-items: center; gap: 12px; padding: 10px 12px; }
+    .bad-avatar-row-b { display: flex; align-items: center; gap: 8px; padding: 6px 12px; }
+    .bad-avatar-row-c { display: flex; align-items: flex-start; gap: 16px; padding: 14px 12px; }
+    .bad-avatar-a {
+      width: 36px; height: 36px; border-radius: 50%; display: flex;
+      align-items: center; justify-content: center; color: #fff;
+      font-size: 13px; font-weight: 700; flex-shrink: 0;
+    }
+    .bad-avatar-b {
+      width: 28px; height: 28px; border-radius: 4px; display: flex;
+      align-items: center; justify-content: center; color: #fff;
+      font-size: 11px; font-weight: 600; flex-shrink: 0;
+    }
+    .bad-avatar-c {
+      width: 44px; height: 44px; border-radius: 50%; display: flex;
+      align-items: center; justify-content: center; color: #fff;
+      font-size: 16px; font-weight: 800; flex-shrink: 0;
+    }
+    .bad-avatar-name-a { font-size: 14px; font-weight: 600; color: #1e293b; }
+    .bad-avatar-role-a { font-size: 12px; color: #64748b; }
+    .bad-avatar-name-b { font-size: 13px; font-weight: 500; color: #334155; }
+    .bad-avatar-role-b { font-size: 11px; color: #94a3b8; }
+    .bad-avatar-name-c { font-size: 16px; font-weight: 700; color: #0f172a; }
+    .bad-avatar-role-c { font-size: 10px; color: #64748b; text-transform: uppercase; }
+
+    /* GOOD: Alert banners */
+    .good-alerts { display: flex; flex-direction: column; gap: 8px; margin-bottom: 32px; }
+    .good-alert {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 16px; border-radius: 8px; font-size: 14px;
+    }
+    .good-alert-success { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+    .good-alert-warning { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
+    .good-alert-error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+
+    /* BAD 27: Inconsistent alerts */
+    .bad-alerts { display: flex; flex-direction: column; gap: 8px; margin-bottom: 32px; }
+    .bad-alert-a {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 10px; border-radius: 4px; font-size: 12px;
+      background: #f0fdf4; color: #166534;
+    }
+    .bad-alert-b {
+      display: flex; align-items: center; gap: 12px;
+      padding: 16px 20px; border-radius: 12px; font-size: 15px;
+      background: #fffbeb; color: #92400e; border: 2px solid #f59e0b;
+    }
+    .bad-alert-c {
+      display: flex; align-items: flex-start; gap: 8px;
+      padding: 10px 14px; border-radius: 0; font-size: 13px;
+      background: #fef2f2; color: #991b1b; border-left: 4px solid #ef4444;
+    }
+
+    /* GOOD: Breadcrumbs */
+    .good-breadcrumbs {
+      display: flex; align-items: center; gap: 6px; margin-bottom: 32px;
+      font-size: 14px;
+    }
+    .good-breadcrumbs a { color: #2563eb; text-decoration: none; }
+    .good-bc-sep { color: #94a3b8; }
+    .good-bc-current { color: #1e293b; font-weight: 600; }
+
+    /* BAD 28: Inconsistent breadcrumbs */
+    .bad-breadcrumbs {
+      display: flex; align-items: center; margin-bottom: 32px;
+    }
+
+    /* GOOD: List items */
+    .good-list {
+      background: #fff; border: 1px solid #e2e8f0; border-radius: 8px;
+      padding: 16px 20px; margin-bottom: 32px;
+    }
+    .good-list-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 0; font-size: 14px; color: #334155;
+    }
+
+    /* BAD 29: Inconsistent list items */
+    .bad-list {
+      background: #fff; border: 1px solid #e2e8f0; border-radius: 8px;
+      padding: 16px 20px; margin-bottom: 32px;
+    }
+    .bad-list-item-a {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 0; font-size: 14px; color: #334155;
+    }
+    .bad-list-item-b {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 0; font-size: 15px; color: #1e293b; font-weight: 500;
+    }
+    .bad-list-item-c {
+      display: flex; align-items: center;
+      padding: 4px 0; font-size: 13px; color: #475569;
+    }
+
+    /* GOOD: Product cards */
+    .good-product-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 32px; }
+    .good-product-card {
+      background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;
+    }
+    .good-product-img { height: 120px; }
+    .good-product-body { padding: 16px; }
+    .good-product-body h3 { font-size: 14px; font-weight: 600; color: #1e293b; }
+    .good-product-body p { font-size: 12px; color: #64748b; margin-top: 4px; }
+    .good-product-price { font-size: 18px; font-weight: 800; color: #0f172a; margin-top: 8px; }
+
+    /* BAD 30: Inconsistent product cards */
+    .bad-product-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 32px; }
+    .bad-product-card-a {
+      background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;
+    }
+    .bad-product-card-b {
+      background: #fff; border: 1px solid #e2e8f0; border-radius: 6px; overflow: hidden;
+    }
+    .bad-product-card-c {
+      background: #fff; border: 2px solid #cbd5e1; border-radius: 12px; overflow: hidden;
+    }
+
+    /* GOOD: Tab bar */
+    .good-tab-bar {
+      display: flex; gap: 0; border-bottom: 2px solid #e2e8f0; margin-bottom: 32px;
+    }
+    .good-tab-btn {
+      padding: 10px 20px; font-size: 14px; font-weight: 500; color: #64748b;
+      background: none; border: none; border-bottom: 2px solid transparent;
+      margin-bottom: -2px; cursor: pointer; font-family: inherit;
+    }
+    .good-tab-btn.active { color: #2563eb; border-bottom-color: #2563eb; font-weight: 600; }
+
+    /* BAD 31: Inconsistent tabs */
+    .bad-tab-bar {
+      display: flex; gap: 4px; border-bottom: 1px solid #e2e8f0; margin-bottom: 32px;
+    }
+    .bad-tab-a {
+      padding: 12px 24px; font-size: 14px; font-weight: 600; color: #2563eb;
+      background: #eff6ff; border: 1px solid #bfdbfe; border-bottom: none;
+      border-radius: 8px 8px 0 0; cursor: pointer; font-family: inherit;
+    }
+    .bad-tab-b {
+      padding: 8px 16px; font-size: 13px; font-weight: 400; color: #64748b;
+      background: none; border: none; cursor: pointer; font-family: inherit;
+    }
+    .bad-tab-c {
+      padding: 10px 12px; font-size: 12px; font-weight: 700; color: #334155;
+      background: none; border: none; border-bottom: 3px solid #f59e0b;
+      cursor: pointer; font-family: inherit; text-transform: uppercase;
+    }
+    .bad-tab-d {
+      padding: 14px 28px; font-size: 15px; font-weight: 500; color: #64748b;
+      background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px;
+      cursor: pointer; font-family: inherit;
+    }
+
+    /* GOOD: Stepper */
+    .good-stepper {
+      display: flex; align-items: center; margin-bottom: 32px;
+    }
+    .good-step {
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+    }
+    .good-step span { font-size: 12px; color: #64748b; font-weight: 500; }
+    .good-step.done span { color: #2563eb; }
+    .good-step-circle {
+      width: 32px; height: 32px; border-radius: 50%; border: 2px solid #e2e8f0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700; color: #94a3b8; background: #fff;
+    }
+    .good-step-circle.done { background: #2563eb; color: #fff; border-color: #2563eb; }
+    .good-step-line { flex: 1; height: 2px; background: #e2e8f0; margin: 0 8px; align-self: flex-start; margin-top: 16px; }
+    .good-step-line.done { background: #2563eb; }
+
+    /* BAD 32: Inconsistent stepper */
+    .bad-stepper {
+      display: flex; align-items: center; margin-bottom: 32px;
+    }
+    .bad-step-a {
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+    }
+    .bad-step-circle-a {
+      width: 32px; height: 32px; border-radius: 50%; border: 2px solid #2563eb;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700; color: #2563eb; background: #eff6ff;
+    }
+    .bad-step-circle-b {
+      width: 24px; height: 24px; border-radius: 4px; border: 1px solid #94a3b8;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 400; color: #64748b; background: #f8fafc;
+    }
+    .bad-step-circle-c {
+      width: 40px; height: 40px; border-radius: 50%; border: 3px solid #22c55e;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; font-weight: 800; color: #166534; background: #dcfce7;
+    }
+    .bad-step-line-a { flex: 1; height: 2px; background: #2563eb; margin: 0 8px; align-self: flex-start; margin-top: 16px; }
+    .bad-step-line-b { flex: 1; height: 1px; background: #e2e8f0; margin: 0 4px; align-self: flex-start; margin-top: 12px; }
+
+    /* GOOD: Stacked transparent layers */
+    .good-layers { margin-bottom: 32px; }
+    .good-layer-base {
+      background: #1e293b; border-radius: 8px; padding: 4px;
+    }
+    .good-layer-overlay {
+      background: rgba(255,255,255,0.12); border-radius: 6px; padding: 20px;
+    }
+    .good-layer-overlay p { color: #e2e8f0; font-size: 14px; }
+
+    /* BAD 33: Stacked transparent layers with bad contrast */
+    .bad-layers { margin-bottom: 32px; }
+    .bad-layer-base { background: #cbd5e1; border-radius: 8px; padding: 4px; }
+    .bad-layer-mid { background: rgba(255,255,255,0.4); border-radius: 6px; padding: 4px; }
+    .bad-layer-top { background: rgba(255,255,255,0.3); border-radius: 4px; padding: 16px; }
+    .bad-layer-top p { color: #e2e8f0; font-size: 14px; }
+
+    /* GOOD: Empty state */
+    .good-empty-state {
+      background: #fff; border: 1px solid #e2e8f0; border-radius: 8px;
+      padding: 48px 32px; text-align: center; margin-bottom: 32px;
+      display: flex; flex-direction: column; align-items: center;
+    }
+    .good-empty-state h3 { font-size: 16px; font-weight: 700; color: #1e293b; margin-top: 16px; }
+    .good-empty-state p { font-size: 14px; color: #64748b; margin-top: 4px; max-width: 300px; }
+
+    /* BAD 34: Cramped empty state */
+    .bad-empty-state {
+      background: #fff; border: 1px solid #e2e8f0; border-radius: 8px;
+      padding: 12px 16px; margin-bottom: 32px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .bad-empty-title { font-size: 13px; font-weight: 700; color: #1e293b; white-space: nowrap; }
+    .bad-empty-desc { font-size: 11px; color: #94a3b8; }
+    .bad-empty-btn {
+      padding: 4px 8px; font-size: 11px; background: #2563eb; color: #fff;
+      border: none; border-radius: 3px; cursor: pointer; white-space: nowrap; font-family: inherit;
+    }
+
+    /* GOOD: Dropdown */
+    .good-dropdown {
+      background: #fff; border: 1px solid #e2e8f0; border-radius: 8px;
+      padding: 4px; width: 200px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      margin-bottom: 32px;
+    }
+    .good-dropdown-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 12px; border-radius: 6px; font-size: 14px; color: #334155;
+      cursor: pointer;
+    }
+    .good-dropdown-item:hover { background: #f1f5f9; }
+    .good-dropdown-divider { height: 1px; background: #e2e8f0; margin: 4px 0; }
+    .good-dropdown-danger { color: #ef4444; }
+
+    /* BAD 35: Inconsistent dropdown */
+    .bad-dropdown {
+      background: #fff; border: 1px solid #e2e8f0; border-radius: 8px;
+      padding: 4px; width: 240px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      margin-bottom: 32px;
+    }
+    .bad-dropdown-item-a {
+      display: flex; align-items: center; gap: 8px;
+      padding: 6px 10px; border-radius: 4px; font-size: 13px; color: #334155; cursor: pointer;
+    }
+    .bad-dropdown-item-b {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 16px; border-radius: 8px; font-size: 15px; color: #1e293b;
+      font-weight: 600; cursor: pointer;
+    }
+    .bad-dropdown-item-c {
+      padding: 8px 10px; font-size: 14px; color: #64748b; cursor: pointer;
+    }
+
     /* Good footer */
     .good-footer {
       background: #1e293b;
@@ -1065,6 +1575,115 @@
         </div>
       </div>
 
+      <!-- ═══ GOOD: Buttons with icon + text, well aligned ═══ -->
+      <span class="section-label good">GOOD: Icon+text buttons, vertically centered</span>
+      <div class="good-compound-buttons">
+        <button class="good-compound-btn">
+          <i data-lucide="plus" style="width:16px;height:16px;flex-shrink:0;"></i>
+          <span>New Item</span>
+        </button>
+        <button class="good-compound-btn">
+          <i data-lucide="upload" style="width:16px;height:16px;flex-shrink:0;"></i>
+          <span>Upload</span>
+        </button>
+        <button class="good-compound-btn">
+          <i data-lucide="send" style="width:16px;height:16px;flex-shrink:0;"></i>
+          <span>Submit</span>
+        </button>
+      </div>
+
+      <!-- ═══ GOOD: Buttons with icon + text + subtext, well aligned ═══ -->
+      <span class="section-label good">GOOD: Icon+text+subtext buttons, aligned</span>
+      <div class="good-rich-buttons">
+        <button class="good-rich-btn">
+          <i data-lucide="file-plus" style="width:20px;height:20px;flex-shrink:0;color:#2563eb;"></i>
+          <div class="good-rich-btn-text">
+            <span class="good-rich-btn-label">Create Document</span>
+            <span class="good-rich-btn-sub">Start from scratch</span>
+          </div>
+        </button>
+        <button class="good-rich-btn">
+          <i data-lucide="folder-open" style="width:20px;height:20px;flex-shrink:0;color:#2563eb;"></i>
+          <div class="good-rich-btn-text">
+            <span class="good-rich-btn-label">Import File</span>
+            <span class="good-rich-btn-sub">From your computer</span>
+          </div>
+        </button>
+        <button class="good-rich-btn">
+          <i data-lucide="link" style="width:20px;height:20px;flex-shrink:0;color:#2563eb;"></i>
+          <div class="good-rich-btn-text">
+            <span class="good-rich-btn-label">Paste Link</span>
+            <span class="good-rich-btn-sub">From a URL</span>
+          </div>
+        </button>
+      </div>
+
+      <!-- ═══ BAD 22: Buttons with misaligned icons ═══ -->
+      <span class="section-label bad">BAD: Icon+text buttons, icons misaligned</span>
+      <div class="bad-compound-buttons">
+        <button class="bad-compound-btn-a">
+          <i data-lucide="plus" style="width:16px;height:16px;flex-shrink:0;margin-top:3px;"></i>
+          <span>New Item</span>
+        </button>
+        <button class="bad-compound-btn-b">
+          <i data-lucide="upload" style="width:20px;height:20px;flex-shrink:0;"></i>
+          <span>Upload</span>
+        </button>
+        <button class="bad-compound-btn-c">
+          <i data-lucide="send" style="width:14px;height:14px;flex-shrink:0;margin-top:-2px;"></i>
+          <span>Submit</span>
+        </button>
+      </div>
+
+      <!-- ═══ BAD 23: Buttons with icon + text + subtext, misaligned ═══ -->
+      <span class="section-label bad">BAD: Icon+text+subtext buttons, various alignment issues</span>
+      <div class="bad-rich-buttons">
+        <button class="bad-rich-btn-a">
+          <i data-lucide="file-plus" style="width:20px;height:20px;flex-shrink:0;color:#2563eb;margin-top:8px;"></i>
+          <div>
+            <span class="bad-rich-btn-label">Create Document</span>
+            <span class="bad-rich-btn-sub">Start from scratch</span>
+          </div>
+        </button>
+        <button class="bad-rich-btn-b">
+          <i data-lucide="folder-open" style="width:28px;height:28px;flex-shrink:0;color:#2563eb;"></i>
+          <div>
+            <span class="bad-rich-btn-label" style="font-size:15px;">Import File</span>
+            <span class="bad-rich-btn-sub" style="font-size:10px;">From your computer</span>
+          </div>
+        </button>
+        <button class="bad-rich-btn-c">
+          <i data-lucide="link" style="width:16px;height:16px;flex-shrink:0;color:#3a7ff5;"></i>
+          <div>
+            <span class="bad-rich-btn-label" style="font-weight:400;">Paste Link</span>
+            <span class="bad-rich-btn-sub">From a URL</span>
+          </div>
+        </button>
+      </div>
+
+      <!-- ═══ BAD 24: Action bar with inconsistent button heights ═══ -->
+      <span class="section-label bad">BAD: Action bar — buttons with different heights/padding</span>
+      <div class="bad-action-bar">
+        <button class="bad-action-a">
+          <i data-lucide="bold" style="width:14px;height:14px;"></i>
+        </button>
+        <button class="bad-action-b">
+          <i data-lucide="italic" style="width:14px;height:14px;"></i>
+        </button>
+        <button class="bad-action-c">
+          <i data-lucide="underline" style="width:16px;height:16px;"></i>
+        </button>
+        <span class="bad-action-separator"></span>
+        <button class="bad-action-d">
+          <i data-lucide="list" style="width:14px;height:14px;"></i>
+          <span>List</span>
+        </button>
+        <button class="bad-action-e">
+          <i data-lucide="image" style="width:18px;height:18px;"></i>
+          <span>Image</span>
+        </button>
+      </div>
+
       <!-- ═══ GOOD: Consistent table ═══ -->
       <span class="section-label good">GOOD: Consistent table</span>
       <table class="good-table">
@@ -1078,6 +1697,368 @@
           <tr><td>Dan Wilson</td><td>dan@example.com</td><td>Editor</td><td>Active</td></tr>
         </tbody>
       </table>
+
+      <!-- ═══════════════════════════════════════════════════════════
+           BATCH 2: Badges, Avatars, Tabs, Alerts, Lists, Cards
+           ═══════════════════════════════════════════════════════════ -->
+
+      <!-- ═══ GOOD: Consistent status badges ═══ -->
+      <span class="section-label good">GOOD: Consistent status badges</span>
+      <div class="good-badges">
+        <span class="good-badge good-badge-success">Active</span>
+        <span class="good-badge good-badge-warning">Pending</span>
+        <span class="good-badge good-badge-error">Failed</span>
+        <span class="good-badge good-badge-neutral">Draft</span>
+      </div>
+
+      <!-- ═══ BAD 25: Inconsistent status badges ═══ -->
+      <span class="section-label bad">BAD: Inconsistent badges — mixed sizes, padding, radii</span>
+      <div class="bad-badges">
+        <span class="bad-badge-a">Active</span>
+        <span class="bad-badge-b">Pending</span>
+        <span class="bad-badge-c">Failed</span>
+        <span class="bad-badge-d">Draft</span>
+      </div>
+
+      <!-- ═══ GOOD: Consistent avatar list ═══ -->
+      <span class="section-label good">GOOD: Consistent avatar + name list</span>
+      <div class="good-avatar-list">
+        <div class="good-avatar-row">
+          <div class="good-avatar" style="background:#3b82f6;">AJ</div>
+          <div><div class="good-avatar-name">Alice Johnson</div><div class="good-avatar-role">Admin</div></div>
+        </div>
+        <div class="good-avatar-row">
+          <div class="good-avatar" style="background:#22c55e;">BS</div>
+          <div><div class="good-avatar-name">Bob Smith</div><div class="good-avatar-role">Editor</div></div>
+        </div>
+        <div class="good-avatar-row">
+          <div class="good-avatar" style="background:#f59e0b;">CD</div>
+          <div><div class="good-avatar-name">Carol Davis</div><div class="good-avatar-role">Viewer</div></div>
+        </div>
+      </div>
+
+      <!-- ═══ BAD 26: Inconsistent avatar list ═══ -->
+      <span class="section-label bad">BAD: Mixed avatar sizes, fonts, spacing</span>
+      <div class="bad-avatar-list">
+        <div class="bad-avatar-row-a">
+          <div class="bad-avatar-a" style="background:#3b82f6;">AJ</div>
+          <div><div class="bad-avatar-name-a">Alice Johnson</div><div class="bad-avatar-role-a">Admin</div></div>
+        </div>
+        <div class="bad-avatar-row-b">
+          <div class="bad-avatar-b" style="background:#22c55e;">BS</div>
+          <div><div class="bad-avatar-name-b">Bob Smith</div><div class="bad-avatar-role-b">Editor</div></div>
+        </div>
+        <div class="bad-avatar-row-c">
+          <div class="bad-avatar-c" style="background:#f59e0b;">CD</div>
+          <div><div class="bad-avatar-name-c">Carol Davis</div><div class="bad-avatar-role-c">Viewer</div></div>
+        </div>
+      </div>
+
+      <!-- ═══ GOOD: Consistent alert banners ═══ -->
+      <span class="section-label good">GOOD: Consistent alert banners</span>
+      <div class="good-alerts">
+        <div class="good-alert good-alert-success">
+          <i data-lucide="check-circle" style="width:16px;height:16px;flex-shrink:0;"></i>
+          <span>Your changes have been saved successfully.</span>
+        </div>
+        <div class="good-alert good-alert-warning">
+          <i data-lucide="alert-triangle" style="width:16px;height:16px;flex-shrink:0;"></i>
+          <span>Your session will expire in 5 minutes.</span>
+        </div>
+        <div class="good-alert good-alert-error">
+          <i data-lucide="x-circle" style="width:16px;height:16px;flex-shrink:0;"></i>
+          <span>Failed to save. Please try again.</span>
+        </div>
+      </div>
+
+      <!-- ═══ BAD 27: Inconsistent alert banners ═══ -->
+      <span class="section-label bad">BAD: Inconsistent alerts — mixed padding, icon sizes, font sizes</span>
+      <div class="bad-alerts">
+        <div class="bad-alert-a">
+          <i data-lucide="check-circle" style="width:14px;height:14px;flex-shrink:0;color:#22c55e;"></i>
+          <span>Saved!</span>
+        </div>
+        <div class="bad-alert-b">
+          <i data-lucide="alert-triangle" style="width:24px;height:24px;flex-shrink:0;color:#f59e0b;"></i>
+          <span>Warning: session expiry approaching. Please save your work now.</span>
+        </div>
+        <div class="bad-alert-c">
+          <i data-lucide="x-circle" style="width:16px;height:16px;flex-shrink:0;color:#ef4444;margin-top:4px;"></i>
+          <span>Error occurred during save operation. Contact support at help@example.com for assistance.</span>
+        </div>
+      </div>
+
+      <!-- ═══ GOOD: Consistent breadcrumbs ═══ -->
+      <span class="section-label good">GOOD: Consistent breadcrumbs</span>
+      <nav class="good-breadcrumbs">
+        <a href="#">Home</a>
+        <span class="good-bc-sep">/</span>
+        <a href="#">Products</a>
+        <span class="good-bc-sep">/</span>
+        <a href="#">Electronics</a>
+        <span class="good-bc-sep">/</span>
+        <span class="good-bc-current">Laptop Pro 16</span>
+      </nav>
+
+      <!-- ═══ BAD 28: Inconsistent breadcrumbs ═══ -->
+      <span class="section-label bad">BAD: Mixed separators, sizes, weights</span>
+      <nav class="bad-breadcrumbs">
+        <a href="#" style="font-size:14px;color:#2563eb;">Home</a>
+        <span style="color:#999;margin:0 4px;">›</span>
+        <a href="#" style="font-size:12px;color:#64748b;">Products</a>
+        <span style="color:#333;margin:0 8px;">/</span>
+        <a href="#" style="font-size:14px;color:#2563eb;font-weight:700;">Electronics</a>
+        <span style="color:#999;margin:0 2px;">→</span>
+        <span style="font-size:13px;color:#1e293b;">Laptop Pro 16</span>
+      </nav>
+
+      <!-- ═══ GOOD: Consistent list items ═══ -->
+      <span class="section-label good">GOOD: Consistent list items with icons</span>
+      <div class="good-list">
+        <div class="good-list-item">
+          <i data-lucide="check" style="width:16px;height:16px;color:#22c55e;flex-shrink:0;"></i>
+          <span>Unlimited storage for all your files</span>
+        </div>
+        <div class="good-list-item">
+          <i data-lucide="check" style="width:16px;height:16px;color:#22c55e;flex-shrink:0;"></i>
+          <span>Priority customer support 24/7</span>
+        </div>
+        <div class="good-list-item">
+          <i data-lucide="check" style="width:16px;height:16px;color:#22c55e;flex-shrink:0;"></i>
+          <span>Advanced analytics and reporting</span>
+        </div>
+        <div class="good-list-item">
+          <i data-lucide="check" style="width:16px;height:16px;color:#22c55e;flex-shrink:0;"></i>
+          <span>Custom integrations via API</span>
+        </div>
+      </div>
+
+      <!-- ═══ BAD 29: Inconsistent list items ═══ -->
+      <span class="section-label bad">BAD: Mixed list item styles — icons, spacing, fonts</span>
+      <div class="bad-list">
+        <div class="bad-list-item-a">
+          <i data-lucide="check" style="width:16px;height:16px;color:#22c55e;flex-shrink:0;"></i>
+          <span>Unlimited storage for all your files</span>
+        </div>
+        <div class="bad-list-item-b">
+          <i data-lucide="check-circle" style="width:20px;height:20px;color:#3b82f6;flex-shrink:0;"></i>
+          <span>Priority customer support</span>
+        </div>
+        <div class="bad-list-item-c">
+          <span style="color:#22c55e;font-weight:bold;margin-right:8px;">✓</span>
+          <span>Advanced analytics</span>
+        </div>
+        <div class="bad-list-item-a">
+          <i data-lucide="minus" style="width:14px;height:14px;color:#94a3b8;flex-shrink:0;"></i>
+          <span>Custom integrations (coming soon)</span>
+        </div>
+      </div>
+
+      <!-- ═══ GOOD: Consistent card grid with images ═══ -->
+      <span class="section-label good">GOOD: Consistent product cards</span>
+      <div class="good-product-cards">
+        <div class="good-product-card">
+          <div class="good-product-img" style="background:#dbeafe;"></div>
+          <div class="good-product-body">
+            <h3>Wireless Headphones</h3>
+            <p>Premium noise-cancelling audio</p>
+            <div class="good-product-price">$299</div>
+          </div>
+        </div>
+        <div class="good-product-card">
+          <div class="good-product-img" style="background:#dcfce7;"></div>
+          <div class="good-product-body">
+            <h3>Smart Watch</h3>
+            <p>Health tracking and notifications</p>
+            <div class="good-product-price">$199</div>
+          </div>
+        </div>
+        <div class="good-product-card">
+          <div class="good-product-img" style="background:#fef3c7;"></div>
+          <div class="good-product-body">
+            <h3>Portable Speaker</h3>
+            <p>Waterproof bluetooth speaker</p>
+            <div class="good-product-price">$79</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ BAD 30: Inconsistent product cards ═══ -->
+      <span class="section-label bad">BAD: Mixed card styles — padding, image heights, typography</span>
+      <div class="bad-product-cards">
+        <div class="bad-product-card-a">
+          <div style="height:100px;background:#dbeafe;border-radius:8px 8px 0 0;"></div>
+          <div style="padding:16px;">
+            <h3 style="font-size:16px;font-weight:700;">Wireless Headphones</h3>
+            <p style="font-size:13px;color:#64748b;margin-top:4px;">Premium audio</p>
+            <div style="font-size:20px;font-weight:800;color:#1e293b;margin-top:8px;">$299</div>
+          </div>
+        </div>
+        <div class="bad-product-card-b">
+          <div style="height:140px;background:#dcfce7;border-radius:6px 6px 0 0;"></div>
+          <div style="padding:12px;">
+            <h3 style="font-size:14px;font-weight:600;">Smart Watch</h3>
+            <p style="font-size:12px;color:#94a3b8;margin-top:2px;">Health tracking and notifications with daily reports</p>
+            <div style="font-size:16px;font-weight:700;color:#2563eb;margin-top:12px;">$199</div>
+          </div>
+        </div>
+        <div class="bad-product-card-c">
+          <div style="height:80px;background:#fef3c7;"></div>
+          <div style="padding:20px;">
+            <h3 style="font-size:18px;font-weight:500;">Portable Speaker</h3>
+            <p style="font-size:14px;color:#475569;margin-top:8px;">Waterproof</p>
+            <div style="font-size:14px;font-weight:600;color:#166534;margin-top:4px;">$79.00</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ GOOD: Consistent tab bar ═══ -->
+      <span class="section-label good">GOOD: Consistent tab bar</span>
+      <div class="good-tab-bar">
+        <button class="good-tab-btn active">Overview</button>
+        <button class="good-tab-btn">Analytics</button>
+        <button class="good-tab-btn">Reports</button>
+        <button class="good-tab-btn">Settings</button>
+      </div>
+
+      <!-- ═══ BAD 31: Inconsistent tab bar ═══ -->
+      <span class="section-label bad">BAD: Mixed tab heights, padding, fonts</span>
+      <div class="bad-tab-bar">
+        <button class="bad-tab-a active">Overview</button>
+        <button class="bad-tab-b">Analytics</button>
+        <button class="bad-tab-c">Reports</button>
+        <button class="bad-tab-d">Settings</button>
+      </div>
+
+      <!-- ═══ GOOD: Consistent progress steps ═══ -->
+      <span class="section-label good">GOOD: Consistent stepper/progress</span>
+      <div class="good-stepper">
+        <div class="good-step done">
+          <div class="good-step-circle done">1</div>
+          <span>Account</span>
+        </div>
+        <div class="good-step-line done"></div>
+        <div class="good-step done">
+          <div class="good-step-circle done">2</div>
+          <span>Profile</span>
+        </div>
+        <div class="good-step-line"></div>
+        <div class="good-step">
+          <div class="good-step-circle">3</div>
+          <span>Review</span>
+        </div>
+        <div class="good-step-line"></div>
+        <div class="good-step">
+          <div class="good-step-circle">4</div>
+          <span>Confirm</span>
+        </div>
+      </div>
+
+      <!-- ═══ BAD 32: Inconsistent stepper ═══ -->
+      <span class="section-label bad">BAD: Mixed step circle sizes, fonts, spacing</span>
+      <div class="bad-stepper">
+        <div class="bad-step-a">
+          <div class="bad-step-circle-a">1</div>
+          <span style="font-size:14px;font-weight:600;">Account</span>
+        </div>
+        <div class="bad-step-line-a"></div>
+        <div class="bad-step-a">
+          <div class="bad-step-circle-b">2</div>
+          <span style="font-size:12px;font-weight:400;">Profile</span>
+        </div>
+        <div class="bad-step-line-b"></div>
+        <div class="bad-step-a">
+          <div class="bad-step-circle-c">3</div>
+          <span style="font-size:13px;font-weight:500;">Review</span>
+        </div>
+        <div class="bad-step-line-a"></div>
+        <div class="bad-step-a">
+          <div class="bad-step-circle-a">4</div>
+          <span style="font-size:14px;font-weight:700;">Confirm</span>
+        </div>
+      </div>
+
+      <!-- ═══ GOOD: Stacked transparent layers (for pixel sampling test) ═══ -->
+      <span class="section-label good">GOOD: Readable text on stacked transparent layers</span>
+      <div class="good-layers">
+        <div class="good-layer-base">
+          <div class="good-layer-overlay">
+            <p>This text sits on two stacked semi-transparent backgrounds and remains readable.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ BAD 33: Text on stacked transparent layers with bad contrast ═══ -->
+      <span class="section-label bad">BAD: Poor contrast on stacked semi-transparent layers</span>
+      <div class="bad-layers">
+        <div class="bad-layer-base">
+          <div class="bad-layer-mid">
+            <div class="bad-layer-top">
+              <p>This text on triple-stacked semitransparent backgrounds has terrible contrast.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ GOOD: Consistent empty states ═══ -->
+      <span class="section-label good">GOOD: Consistent empty state</span>
+      <div class="good-empty-state">
+        <i data-lucide="inbox" style="width:48px;height:48px;color:#94a3b8;"></i>
+        <h3>No messages yet</h3>
+        <p>When you receive messages, they'll appear here.</p>
+        <button class="good-btn good-btn-primary" style="margin-top:16px;">Compose Message</button>
+      </div>
+
+      <!-- ═══ BAD 34: Inconsistent empty state ═══ -->
+      <span class="section-label bad">BAD: Cramped empty state with poor hierarchy</span>
+      <div class="bad-empty-state">
+        <i data-lucide="inbox" style="width:24px;height:24px;color:#ccc;"></i>
+        <span class="bad-empty-title">No messages</span>
+        <span class="bad-empty-desc">When you receive messages, they'll appear here. Check back later for updates from your team.</span>
+        <button class="bad-empty-btn">Compose</button>
+      </div>
+
+      <!-- ═══ GOOD: Consistent dropdown/select menu ═══ -->
+      <span class="section-label good">GOOD: Consistent dropdown items</span>
+      <div class="good-dropdown">
+        <div class="good-dropdown-item">
+          <i data-lucide="user" style="width:16px;height:16px;flex-shrink:0;"></i>
+          <span>My Profile</span>
+        </div>
+        <div class="good-dropdown-item">
+          <i data-lucide="settings" style="width:16px;height:16px;flex-shrink:0;"></i>
+          <span>Settings</span>
+        </div>
+        <div class="good-dropdown-item">
+          <i data-lucide="help-circle" style="width:16px;height:16px;flex-shrink:0;"></i>
+          <span>Help & Support</span>
+        </div>
+        <div class="good-dropdown-divider"></div>
+        <div class="good-dropdown-item good-dropdown-danger">
+          <i data-lucide="log-out" style="width:16px;height:16px;flex-shrink:0;"></i>
+          <span>Sign Out</span>
+        </div>
+      </div>
+
+      <!-- ═══ BAD 35: Inconsistent dropdown ═══ -->
+      <span class="section-label bad">BAD: Inconsistent dropdown — mixed padding, icon sizes, fonts</span>
+      <div class="bad-dropdown">
+        <div class="bad-dropdown-item-a">
+          <i data-lucide="user" style="width:14px;height:14px;flex-shrink:0;"></i>
+          <span>My Profile</span>
+        </div>
+        <div class="bad-dropdown-item-b">
+          <i data-lucide="settings" style="width:20px;height:20px;flex-shrink:0;"></i>
+          <span>Settings</span>
+        </div>
+        <div class="bad-dropdown-item-c">
+          <span>Help & Support</span>
+        </div>
+        <div class="bad-dropdown-item-a" style="color:#ef4444;font-weight:700;">
+          <i data-lucide="log-out" style="width:16px;height:16px;flex-shrink:0;"></i>
+          <span>Sign Out</span>
+        </div>
+      </div>
 
     </main>
   </div>

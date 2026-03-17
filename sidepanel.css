@@ -450,6 +450,33 @@ main {
   background: var(--bg-hover);
 }
 
+.finding-component {
+  margin-top: 6px;
+  padding: 3px 8px;
+  font-size: 10px;
+  color: var(--accent);
+  background: var(--bg-surface);
+  border-radius: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: background 0.12s ease;
+}
+
+.finding-component:hover {
+  background: var(--bg-hover);
+}
+
+.finding-component-icon {
+  font-size: 8px;
+}
+
+.finding-component-selector {
+  color: var(--text-dim);
+  font-family: var(--mono);
+}
+
 .finding-header {
   display: flex;
   align-items: center;
