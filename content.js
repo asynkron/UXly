@@ -1114,6 +1114,8 @@
         if (blocker.z <= interactive.z) continue;
         // Skip blockers that are off-canvas horizontally
         if (blocker.rect.right < -50 || blocker.rect.left > vw + 50) continue;
+        // Skip sticky-positioned blockers — they're meant to cover scrolled content
+        if (blocker.styles.position === "sticky") continue;
         // Check if blocker fully covers the interactive element
         if (blocker.rect.left <= interactive.rect.left &&
             blocker.rect.top <= interactive.rect.top &&
